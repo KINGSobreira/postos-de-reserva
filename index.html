@@ -196,7 +196,7 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
           <label class="f"><span>Matrícula (colaborador coberto) <em>*</em></span><input id="c_mat2" inputmode="numeric" autocomplete="off"></label>
           <label class="f"><span>Nome (colaborador coberto) <em>*</em></span><input id="c_nome2" autocomplete="off"></label>
           <label class="f"><span>Motivo da cobertura <em>*</em></span>
-            <select id="c_motivo"><option value="">Selecione</option><option>Atestado médico</option><option>Afastamento</option><option>Falta não justificada</option><option>Férias</option><option>Licença casamento</option><option>Licença paternidade</option><option>Licença óbito</option><option>Folga TRE</option><option value="OUTRO">Outro motivo</option></select></label>
+            <select id="c_motivo"><option value="">Selecione</option><option>AFASTAMENTO</option><option>ATESTADO MÉDICO</option><option>CASAMENTO</option><option>FALTA NÃO JUSTIFICADA</option><option>FÉRIAS</option><option>INTEGRAÇÃO</option><option>SUSPENSÃO</option><option>FERIADO</option><option>LICENÇA PATERNIDADE</option><option>LICENÇA ÓBITO</option><option>ACOMPANHAMENTO DE FILHO MENOR DE 6 ANOS</option><option>FOLGA ESCALA 6X1</option><option>FOLGA ESCALA 5X1</option><option>FOLGA TRE</option><option>RECICLAGEM</option><option>ABANDONO DE EMPREGO</option><option>DEVOLUÇÃO</option><option>DESLIGAMENTO</option><option>COBERTURA DE FOLGA</option><option>IMPLANTAÇÃO</option><option>CONVOCAÇÃO SINDICAL</option><option value="OUTRO">OUTRO MOTIVO</option></select></label>
           <label class="f" id="c_motivoOutroWrap" hidden><span>Qual motivo? <em>*</em></span><input id="c_motivoOutro" autocomplete="off"></label>
           <div class="full" id="m_diasWrap">
             <span class="hint" id="m_diasInfo"></span>
@@ -472,7 +472,7 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
     const r=ultimaReserva(mat,true)||ultimaReserva(mat,false),hoje=today(),agora=new Date().toISOString();
     const regs=dias.map(iso=>{
       const b={situacao:(s==="cobertura"&&iso>hoje)?"programado":s,matricula:mat,nome:$("m_nome").value.trim().toUpperCase(),data:iso,criadoPor:uid||"",criadoEm:agora};
-      if(COB(s))Object.assign(b,{filial:$("c_filial").value,funcao:valorFuncao("c"),escala:$("c_escala").value,turno:$("c_turno").value,local:$("c_local").value.trim().toUpperCase(),matCoberto:$("c_mat2").value.trim(),nomeCoberto:$("c_nome2").value.trim().toUpperCase(),motivo:$("c_motivo").value==="OUTRO"?$("c_motivoOutro").value.trim():$("c_motivo").value});
+      if(COB(s))Object.assign(b,{filial:$("c_filial").value,funcao:valorFuncao("c"),escala:$("c_escala").value,turno:$("c_turno").value,local:$("c_local").value.trim().toUpperCase(),matCoberto:$("c_mat2").value.trim(),nomeCoberto:$("c_nome2").value.trim().toUpperCase(),motivo:$("c_motivo").value==="OUTRO"?$("c_motivoOutro").value.trim().toUpperCase():$("c_motivo").value});
       else{b.filial=r?r.filial:"";b.funcao=r?r.funcao:"";b.escala=r?r.escala:"";b.motivo=s==="ocorrencia"?$("o_motivo").value:s==="nao_utilizado"?$("n_motivo").value.trim():""}
       return b;
     });
