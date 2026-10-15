@@ -1,0 +1,539 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Postos de Reserva SERVNAC</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: faixa de cabeçalho verde + coluna única de formulário, abas por tipo de registro */
+:root{
+  --bg:#f5f7f5; --surface:#ffffff; --fg:#1d2420; --muted:#5d6a63; --line:#d8e0db;
+  --accent:#1f7a45; --accent-ink:#ffffff; --accent-soft:#e3f1e8; --band:#14532d; --band-fg:#eaf5ee;
+  --danger:#b3261e; --danger-soft:#fbe9e7; --warn:#8a5a00; --warn-soft:#fdf1d8;
+  --f-display:"Archivo","Segoe UI",system-ui,sans-serif;
+  --f-body:"IBM Plex Sans","Segoe UI",system-ui,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#121614; --surface:#1a201d; --fg:#e6ece8; --muted:#9aa8a0; --line:#2d3631;
+  --accent:#4cb87a; --accent-ink:#0d1a12; --accent-soft:#1d3327; --band:#0e2a19; --band-fg:#dcefe3;
+  --danger:#f2867c; --danger-soft:#3a1e1c; --warn:#e8bb5c; --warn-soft:#3a2f17; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#121614; --surface:#1a201d; --fg:#e6ece8; --muted:#9aa8a0; --line:#2d3631;
+  --accent:#4cb87a; --accent-ink:#0d1a12; --accent-soft:#1d3327; --band:#0e2a19; --band-fg:#dcefe3;
+  --danger:#f2867c; --danger-soft:#3a1e1c; --warn:#e8bb5c; --warn-soft:#3a2f17; color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:15px;line-height:1.5}
+.wrap{max-width:980px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+header.band{background:var(--band);color:var(--band-fg)}
+header.band .wrap{padding-block:22px 0;display:flex;flex-direction:column;gap:14px}
+.eyebrow{font-family:var(--f-mono);font-size:11.5px;letter-spacing:.12em;text-transform:uppercase;opacity:.8}
+h1{font-family:var(--f-display);font-weight:800;font-size:clamp(22px,4vw,30px);margin:2px 0 0;letter-spacing:-.01em;text-wrap:balance}
+.who{font-size:13px;opacity:.85}
+nav.tabs{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none}
+nav.tabs button{font:600 14px var(--f-display);color:var(--band-fg);background:transparent;border:0;padding:11px 16px 12px;border-radius:8px 8px 0 0;cursor:pointer;white-space:nowrap;opacity:.8}
+nav.tabs button[aria-selected="true"]{background:var(--bg);color:var(--fg);opacity:1}
+nav.tabs button:focus-visible{outline:2px solid var(--band-fg);outline-offset:-3px}
+main .wrap{padding-block:24px 48px;display:flex;flex-direction:column;gap:18px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:22px}
+.panel h2{font-family:var(--f-display);font-size:18px;font-weight:700;margin:0 0 4px}
+.panel p.lead{margin:0 0 18px;color:var(--muted);font-size:14px;max-width:65ch}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 16px}
+.grid .full{grid-column:1/-1}
+@media (max-width:620px){.grid{grid-template-columns:minmax(0,1fr)}.panel{padding:18px 16px}}
+label.f{display:flex;flex-direction:column;gap:5px;min-width:0}
+label.f>span{font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+label.f>span em{font-style:normal;color:var(--danger)}
+input,select,textarea{font:inherit;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:7px;padding:10px 11px;width:100%;min-width:0}
+textarea{min-height:76px;resize:vertical}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-offset:0;border-color:var(--accent)}
+input[aria-invalid="true"],select[aria-invalid="true"]{border-color:var(--danger)}
+.hint{font-size:12.5px;color:var(--muted)}
+.seg{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px}
+.seg label{display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:999px;padding:8px 14px;cursor:pointer;font-weight:600;font-size:14px;background:var(--bg)}
+.seg input{width:auto;accent-color:var(--accent)}
+.seg label:has(input:checked){border-color:var(--accent);background:var(--accent-soft);color:var(--fg)}
+.sub{border-top:1px dashed var(--line);padding-top:16px;margin-top:4px}
+.sub h3{font-family:var(--f-display);font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--accent);margin:0 0 12px}
+.actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:20px}
+.btn{font:600 14px var(--f-display);border-radius:8px;padding:11px 18px;border:1px solid transparent;cursor:pointer}
+.btn.primary{background:var(--accent);color:var(--accent-ink)}
+.btn.ghost{background:transparent;color:var(--fg);border-color:var(--line)}
+.btn.small{padding:6px 11px;font-size:13px}
+.btn.danger{background:transparent;color:var(--danger);border-color:var(--line)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.msg{font-size:14px;padding:10px 12px;border-radius:7px}
+.msg.ok{background:var(--accent-soft);color:var(--fg)}
+.msg.err{background:var(--danger-soft);color:var(--danger)}
+.msg.warn{background:var(--warn-soft);color:var(--warn)}
+.toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:end;margin-bottom:14px}
+.toolbar label.f{flex:1 1 160px}
+.counts{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+.chip{font-size:12.5px;font-weight:600;padding:4px 10px;border-radius:999px;background:var(--accent-soft);color:var(--fg);white-space:nowrap}
+.chip.gray{background:var(--bg);border:1px solid var(--line)}
+.chip.warn{background:var(--warn-soft);color:var(--warn)}
+.chip.red{background:var(--danger-soft);color:var(--danger)}
+.tablebox{overflow-x:auto;border:1px solid var(--line);border-radius:8px}
+table{border-collapse:collapse;width:100%;font-size:13.5px;min-width:760px}
+th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);background:var(--bg);font-weight:600;white-space:nowrap}
+tr:last-child td{border-bottom:0}
+td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+.empty{padding:28px 16px;text-align:center;color:var(--muted)}
+.subtabs{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap}
+.subtabs button{font:600 13.5px var(--f-display);border:1px solid var(--line);background:var(--bg);color:var(--fg);padding:8px 14px;border-radius:999px;cursor:pointer}
+.subtabs button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.status{font-size:13px;color:var(--muted)}
+@media (prefers-reduced-motion:no-preference){.btn,.seg label{transition:background .15s,border-color .15s}}
+</style>
+<script>
+  /* CONFIGURAÇÃO: cole entre as aspas a URL do "App da Web" do Google Apps Script (termina em /exec) */
+  window.API_URL="COLE_AQUI_A_URL_DO_APPS_SCRIPT";
+</script>
+</head>
+<body>
+
+<header class="band">
+  <div class="wrap">
+    <div>
+      <div class="eyebrow">Grupo SERVNAC · Verde Segurança</div>
+      <h1>Postos de Reserva</h1>
+      <div class="who" id="who">Registro de colaboradores na reserva e das movimentações diárias</div>
+    </div>
+    <nav class="tabs" role="tablist">
+      <button role="tab" id="tab-reserva" aria-selected="true" data-tab="reserva">Entrada na reserva</button>
+      <button role="tab" id="tab-mov" aria-selected="false" data-tab="mov">Situação do dia</button>
+      <button role="tab" id="tab-saida" aria-selected="false" data-tab="saida">Saída da reserva</button>
+      <button role="tab" id="tab-reg" aria-selected="false" data-tab="reg">Registros</button>
+    </nav>
+  </div>
+</header>
+
+<main>
+<div class="wrap">
+  <div id="banner" class="msg warn" hidden></div>
+
+  <!-- ENTRADA NA RESERVA -->
+  <section class="panel" id="view-reserva">
+    <h2>Entrada na reserva</h2>
+    <p class="lead">Registre o colaborador que passou para o posto de reserva. Campos com <em style="color:var(--danger);font-style:normal">*</em> são obrigatórios.</p>
+    <form id="formReserva" novalidate>
+      <div class="grid">
+        <label class="f"><span>Matrícula <em>*</em></span><input id="r_mat" name="matricula" inputmode="numeric" autocomplete="off" required></label>
+        <label class="f"><span>Nome do colaborador <em>*</em></span><input id="r_nome" name="nome" autocomplete="off" required></label>
+        <label class="f"><span>Filial <em>*</em></span>
+          <select id="r_filial" name="filial" required><option value="">Selecione</option><option>0101</option><option>0102</option><option>0103</option><option>0501</option></select></label>
+        <label class="f"><span>Função <em>*</em></span>
+          <select id="r_funcao" name="funcao" required><option value="">Selecione</option><option>VIGILANTE</option><option>SUPERVISOR DE VIGILANTE</option></select></label>
+        <label class="f"><span>Escala <em>*</em></span>
+          <select id="r_escala" name="escala" required><option value="">Selecione</option><option>12X36</option><option>5X2</option><option>6X1</option><option>5X1</option></select></label>
+        <label class="f"><span>Tipo de reserva <em>*</em></span>
+          <select id="r_tipo" name="tipo" required><option value="">Selecione</option><option>Transitória</option><option>Permanente</option></select></label>
+        <label class="f full"><span>Motivo da entrada <em>*</em></span>
+          <select id="r_motivo" name="motivo" required><option value="">Selecione</option><option>Reserva permanente</option><option>Retorno de afastamento</option><option>Fim de contrato</option><option>Aguardando posto fixo</option><option>Aguardando desligamento</option><option>Devolvido pelo cliente</option><option>Outro</option></select></label>
+        <label class="f full" id="r_outroWrap" hidden><span>Descreva o motivo <em>*</em></span><input id="r_outro" name="motivoOutro" autocomplete="off"></label>
+        <label class="f"><span>Entrada na reserva <em>*</em></span><input id="r_entrada" name="entrada" type="date" required></label>
+        <label class="f"><span>Previsão de saída</span><input id="r_saida" name="previsaoSaida" type="date"></label>
+      </div>
+      <div class="actions">
+        <button class="btn primary" type="submit" id="r_submit">Registrar entrada</button>
+        <button class="btn ghost" type="reset">Limpar</button>
+        <span id="r_msg" class="msg" hidden></span>
+      </div>
+    </form>
+  </section>
+
+  <!-- SITUAÇÃO DO DIA -->
+  <section class="panel" id="view-mov" hidden>
+    <h2>Situação do dia</h2>
+    <p class="lead">Registre o que o colaborador da reserva fez no dia. Ao digitar a matrícula de quem já está cadastrado na reserva, nome, filial, função e escala são preenchidos sozinhos.</p>
+    <form id="formMov" novalidate>
+      <div class="seg" role="radiogroup" aria-label="Situação do dia">
+        <label><input type="radio" name="situacao" id="s_cob" value="cobertura" checked> Em cobertura</label>
+        <label><input type="radio" name="situacao" id="s_nu" value="nao_utilizado"> Não utilizado</label>
+        <label><input type="radio" name="situacao" id="s_oc" value="ocorrencia"> Ocorrência</label>
+      </div>
+
+      <div class="grid">
+        <label class="f"><span>Matrícula <em>*</em></span><input id="m_mat" list="listaReserva" inputmode="numeric" autocomplete="off" required></label>
+        <label class="f"><span>Nome do colaborador (na reserva) <em>*</em></span><input id="m_nome" autocomplete="off" required></label>
+        <label class="f"><span>Data <em>*</em></span><input id="m_data" type="date" required></label>
+        <div class="hint" id="m_found" style="align-self:end"></div>
+      </div>
+      <datalist id="listaReserva"></datalist>
+
+      <div class="sub" id="blk-cobertura">
+        <h3>Em cobertura</h3>
+        <div class="grid">
+          <label class="f"><span>Filial <em>*</em></span>
+            <select id="c_filial"><option value="">Selecione</option><option>0101</option><option>0102</option><option>0103</option><option>0501</option></select></label>
+          <label class="f"><span>Função <em>*</em></span>
+            <select id="c_funcao"><option value="">Selecione</option><option>VIGILANTE</option><option>SUPERVISOR DE VIGILANTE</option></select></label>
+          <label class="f"><span>Escala <em>*</em></span>
+            <select id="c_escala"><option value="">Selecione</option><option>12X36</option><option>5X2</option><option>6X1</option><option>5X1</option></select></label>
+          <label class="f"><span>Local de cobertura (posto de serviço) <em>*</em></span><input id="c_local" autocomplete="off"></label>
+          <label class="f"><span>Matrícula (colaborador coberto) <em>*</em></span><input id="c_mat2" inputmode="numeric" autocomplete="off"></label>
+          <label class="f"><span>Nome (colaborador coberto) <em>*</em></span><input id="c_nome2" autocomplete="off"></label>
+        </div>
+      </div>
+
+      <div class="sub" id="blk-nao_utilizado" hidden>
+        <h3>Não utilizado</h3>
+        <div class="grid">
+          <label class="f full"><span>Motivo <em>*</em></span><textarea id="n_motivo"></textarea></label>
+        </div>
+      </div>
+
+      <div class="sub" id="blk-ocorrencia" hidden>
+        <h3>Ocorrência</h3>
+        <div class="grid">
+          <label class="f full"><span>Motivo <em>*</em></span>
+            <select id="o_motivo"><option value="">Selecione</option><option>Atestado médico</option><option>Afastamento</option><option>Licença casamento</option><option>Folga TRE</option><option>Licença paternidade</option><option>Licença óbito</option></select></label>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="btn primary" type="submit" id="m_submit">Registrar situação</button>
+        <button class="btn ghost" type="button" id="m_clear">Limpar</button>
+        <span id="m_msg" class="msg" hidden></span>
+      </div>
+    </form>
+  </section>
+
+  <!-- SAÍDA DA RESERVA -->
+  <section class="panel" id="view-saida" hidden>
+    <h2>Saída da reserva</h2>
+    <p class="lead">Registre quando o colaborador deixa o posto de reserva. Digite a matrícula para localizar a entrada dele na reserva.</p>
+    <form id="formSaida" novalidate>
+      <div class="grid">
+        <label class="f"><span>Matrícula <em>*</em></span><input id="x_mat" list="listaReserva" inputmode="numeric" autocomplete="off" required></label>
+        <label class="f"><span>Nome do colaborador</span><input id="x_nome" readonly tabindex="-1" placeholder="Preenchido pela matrícula"></label>
+        <label class="f"><span>Saída efetiva <em>*</em></span><input id="x_data" type="date" required></label>
+        <label class="f"><span>Motivo da saída <em>*</em></span>
+          <select id="x_motivo" required><option value="">Selecione</option><option>Fixo no posto</option><option>Desligado</option><option>Afastado</option><option>Substituto de férias</option></select></label>
+        <div class="hint full" id="x_found"></div>
+      </div>
+
+      <div class="sub" id="xb-Fixo no posto" hidden>
+        <h3>Fixo no posto</h3>
+        <div class="grid">
+          <label class="f"><span>Nome do posto <em>*</em></span><input id="x_posto" autocomplete="off"></label>
+          <label class="f"><span>Filial <em>*</em></span>
+            <select id="x_filial"><option value="">Selecione</option><option>0101</option><option>0102</option><option>0103</option><option>0501</option></select></label>
+        </div>
+      </div>
+      <div class="sub" id="xb-Desligado" hidden>
+        <h3>Desligado</h3>
+        <div class="grid">
+          <label class="f"><span>Data de desligamento <em>*</em></span><input id="x_deslig" type="date"></label>
+        </div>
+      </div>
+      <div class="sub" id="xb-Afastado" hidden>
+        <h3>Afastado</h3>
+        <div class="grid">
+          <label class="f"><span>Dias de afastamento <em>*</em></span><input id="x_dias" type="number" min="1" step="1" inputmode="numeric"></label>
+        </div>
+      </div>
+      <div class="sub" id="xb-Substituto de férias" hidden>
+        <h3>Substituto de férias</h3>
+        <div class="grid">
+          <label class="f"><span>Região <em>*</em></span>
+            <select id="x_regiao"><option value="">Selecione</option><option>CAPITAL</option><option>INT. NORTE</option><option>INT. SUL</option></select></label>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="btn primary" type="submit" id="x_submit">Registrar saída</button>
+        <button class="btn ghost" type="button" id="x_clear">Limpar</button>
+        <span id="x_msg" class="msg" hidden></span>
+      </div>
+    </form>
+  </section>
+
+  <!-- REGISTROS -->
+  <section class="panel" id="view-reg" hidden>
+    <h2>Registros</h2>
+    <p class="lead">Tudo o que os supervisores lançaram. A lista se atualiza sozinha a cada minuto.</p>
+    <div class="subtabs">
+      <button type="button" id="st-res" aria-pressed="true" data-sub="res">Colaboradores na reserva</button>
+      <button type="button" id="st-mov" aria-pressed="false" data-sub="mov">Situações do dia</button>
+    </div>
+    <div class="toolbar">
+      <label class="f"><span>Buscar</span><input id="q" placeholder="Matrícula, nome ou posto" autocomplete="off"></label>
+      <label class="f"><span>Filial</span><select id="fFilial"><option value="">Todas</option><option>0101</option><option>0102</option><option>0103</option><option>0501</option></select></label>
+      <label class="f" id="fStatusWrap"><span>Status</span><select id="fStatus"><option value="ativo">Na reserva</option><option value="saiu">Já saíram</option><option value="">Todos</option></select></label>
+      <label class="f" id="fSitWrap" hidden><span>Situação</span><select id="fSit"><option value="">Todas</option><option value="cobertura">Em cobertura</option><option value="nao_utilizado">Não utilizado</option><option value="ocorrencia">Ocorrência</option></select></label>
+      <label class="f"><span>De</span><input id="fDe" type="date"></label>
+      <label class="f"><span>Até</span><input id="fAte" type="date"></label>
+      <button class="btn ghost" type="button" id="btnXlsx">Baixar planilha Excel</button>
+    </div>
+    <div class="counts" id="counts"></div>
+    <div class="tablebox"><table id="tbl"><thead></thead><tbody></tbody></table></div>
+    <div class="status" id="status" style="margin-top:10px"></div>
+  </section>
+</div>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+(function(){
+  const API_URL=window.API_URL||"";
+  const $=id=>document.getElementById(id);
+  async function apiPost(body){
+    const r=await fetch(API_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(body)});
+    const j=await r.json();
+    if(!j.ok)throw new Error(j.error||"A planilha recusou o registro.");
+    await refresh();return j;
+  }
+  const FILIAIS={"0101":"SERVNAC SEGURANÇA","0102":"SERVNAC SEGURANÇA RN","0103":"SERVNAC SEGURANÇA SP","0501":"VERDE SEGURANÇA"};
+  const SIT={cobertura:"Em cobertura",nao_utilizado:"Não utilizado",ocorrencia:"Ocorrência"};
+  let db=null,user=null,uid=null,downloads=null,canAdmin=false,readOnly=false;
+  let reservas=[],movs=[],sub="res";
+
+  const today=()=>{const d=new Date();d.setMinutes(d.getMinutes()-d.getTimezoneOffset());return d.toISOString().slice(0,10)};
+  const fmt=s=>s?s.split("-").reverse().join("/"):"—";
+  const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+  const norm=s=>String(s||"").normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase();
+
+  /* abas */
+  document.querySelectorAll("nav.tabs button").forEach(b=>b.addEventListener("click",()=>{
+    document.querySelectorAll("nav.tabs button").forEach(x=>x.setAttribute("aria-selected",x===b));
+    ["reserva","mov","saida","reg"].forEach(t=>$("view-"+t).hidden=t!==b.dataset.tab);
+  }));
+  document.querySelectorAll(".subtabs button").forEach(b=>b.addEventListener("click",()=>{
+    sub=b.dataset.sub;
+    document.querySelectorAll(".subtabs button").forEach(x=>x.setAttribute("aria-pressed",x===b));
+    $("fSitWrap").hidden=sub!=="mov";$("fStatusWrap").hidden=sub!=="res";render();
+  }));
+
+  function showMsg(el,kind,text){el.className="msg "+kind;el.textContent=text;el.hidden=false;clearTimeout(el._t);el._t=setTimeout(()=>el.hidden=true,6000)}
+  function mark(el,bad){el.setAttribute("aria-invalid",bad?"true":"false");return bad}
+
+  /* ENTRADA NA RESERVA */
+  $("r_entrada").value=today();
+  $("r_motivo").addEventListener("change",()=>{$("r_outroWrap").hidden=$("r_motivo").value!=="Outro"});
+  $("formReserva").addEventListener("reset",()=>setTimeout(()=>{$("r_outroWrap").hidden=true;$("r_entrada").value=today();document.querySelectorAll("#formReserva [aria-invalid]").forEach(e=>e.removeAttribute("aria-invalid"))}));
+  $("formReserva").addEventListener("submit",async e=>{
+    e.preventDefault();
+    const req=["r_mat","r_nome","r_filial","r_funcao","r_escala","r_tipo","r_motivo","r_entrada"];
+    let bad=false;req.forEach(id=>{if(mark($(id),!$(id).value.trim()))bad=true});
+    if($("r_motivo").value==="Outro"&&mark($("r_outro"),!$("r_outro").value.trim()))bad=true;
+    if(bad)return showMsg($("r_msg"),"err","Preencha os campos obrigatórios destacados.");
+    if($("r_saida").value&&$("r_saida").value<$("r_entrada").value){mark($("r_saida"),true);return showMsg($("r_msg"),"err","A previsão de saída não pode ser antes da entrada.")}
+    mark($("r_saida"),false);
+    if(!db)return showMsg($("r_msg"),"err","Sem conexão com a planilha. Verifique a internet e tente de novo.");
+    const doc={matricula:$("r_mat").value.trim(),nome:$("r_nome").value.trim().toUpperCase(),filial:$("r_filial").value,funcao:$("r_funcao").value,escala:$("r_escala").value,tipo:$("r_tipo").value,motivo:$("r_motivo").value,motivoOutro:$("r_motivo").value==="Outro"?$("r_outro").value.trim():"",entrada:$("r_entrada").value,previsaoSaida:$("r_saida").value||"",criadoPor:uid||"",criadoEm:new Date().toISOString()};
+    $("r_submit").disabled=true;
+    try{await apiPost({action:"addReserva",data:doc});$("formReserva").reset();showMsg($("r_msg"),"ok",`Entrada de ${doc.nome} registrada.`)}
+    catch(err){showMsg($("r_msg"),"err",errText(err))}
+    finally{$("r_submit").disabled=readOnly}
+  });
+
+  /* SITUAÇÃO DO DIA */
+  $("m_data").value=today();
+  const sitAtual=()=>document.querySelector('input[name="situacao"]:checked').value;
+  document.querySelectorAll('input[name="situacao"]').forEach(r=>r.addEventListener("change",()=>{
+    ["cobertura","nao_utilizado","ocorrencia"].forEach(s=>$("blk-"+s).hidden=s!==sitAtual());
+  }));
+  const ativas=()=>reservas.filter(r=>!r.saidaEfetiva);
+  const ultimaReserva=(m,soAtiva)=>(soAtiva?ativas():reservas).filter(x=>x.matricula===m).sort((a,b)=>(b.entrada||"").localeCompare(a.entrada||""))[0];
+  function preencherPorMatricula(){
+    const m=$("m_mat").value.trim();
+    const r=ultimaReserva(m,true)||ultimaReserva(m,false);
+    if(r){$("m_nome").value=r.nome;$("c_filial").value=r.filial;$("c_funcao").value=r.funcao;$("c_escala").value=r.escala;$("m_found").textContent=`Na reserva desde ${fmt(r.entrada)} · filial ${r.filial}`}
+    else $("m_found").textContent=m?"Matrícula não encontrada na reserva. Preencha os dados manualmente.":"";
+  }
+  $("m_mat").addEventListener("change",preencherPorMatricula);
+  $("m_mat").addEventListener("blur",preencherPorMatricula);
+  function limparMov(){
+    ["m_mat","m_nome","c_filial","c_funcao","c_escala","c_local","c_mat2","c_nome2","n_motivo","o_motivo"].forEach(id=>{$(id).value="";$(id).removeAttribute("aria-invalid")});
+    $("m_data").value=today();$("m_found").textContent="";
+  }
+  $("m_clear").addEventListener("click",limparMov);
+  $("formMov").addEventListener("submit",async e=>{
+    e.preventDefault();
+    const s=sitAtual();
+    const req={cobertura:["c_filial","c_funcao","c_escala","c_local","c_mat2","c_nome2"],nao_utilizado:["n_motivo"],ocorrencia:["o_motivo"]}[s];
+    let bad=false;["m_mat","m_nome","m_data",...req].forEach(id=>{if(mark($(id),!$(id).value.trim()))bad=true});
+    if(bad)return showMsg($("m_msg"),"err","Preencha os campos obrigatórios destacados.");
+    if(!db)return showMsg($("m_msg"),"err","Sem conexão com a planilha. Verifique a internet e tente de novo.");
+    const base={situacao:s,matricula:$("m_mat").value.trim(),nome:$("m_nome").value.trim().toUpperCase(),data:$("m_data").value,criadoPor:uid||"",criadoEm:new Date().toISOString()};
+    const r=reservas.find(x=>x.matricula===base.matricula);
+    if(s==="cobertura")Object.assign(base,{filial:$("c_filial").value,funcao:$("c_funcao").value,escala:$("c_escala").value,local:$("c_local").value.trim().toUpperCase(),matCoberto:$("c_mat2").value.trim(),nomeCoberto:$("c_nome2").value.trim().toUpperCase()});
+    else{base.filial=r?r.filial:"";base.motivo=s==="ocorrencia"?$("o_motivo").value:$("n_motivo").value.trim()}
+    $("m_submit").disabled=true;
+    try{await apiPost({action:"addMov",data:base});const nome=base.nome;limparMov();showMsg($("m_msg"),"ok",`${SIT[s]} de ${nome} registrada.`)}
+    catch(err){showMsg($("m_msg"),"err",errText(err))}
+    finally{$("m_submit").disabled=readOnly}
+  });
+
+  /* SAÍDA DA RESERVA */
+  $("x_data").value=today();
+  $("x_motivo").addEventListener("change",()=>{
+    ["Fixo no posto","Desligado","Afastado","Substituto de férias"].forEach(m=>$("xb-"+m).hidden=m!==$("x_motivo").value);
+  });
+  function localizarSaida(){
+    const m=$("x_mat").value.trim(),r=ultimaReserva(m,true);
+    $("x_nome").value=r?r.nome:"";
+    if(r)$("x_found").textContent=`Na reserva desde ${fmt(r.entrada)} · filial ${r.filial} · ${r.tipo}`;
+    else if(m)$("x_found").textContent=ultimaReserva(m,false)?"Essa matrícula já tem saída registrada.":"Matrícula não encontrada na reserva. Registre a entrada primeiro.";
+    else $("x_found").textContent="";
+    return r;
+  }
+  $("x_mat").addEventListener("change",localizarSaida);
+  $("x_mat").addEventListener("blur",localizarSaida);
+  function limparSaida(){
+    ["x_mat","x_nome","x_motivo","x_posto","x_filial","x_deslig","x_dias","x_regiao"].forEach(id=>{$(id).value="";$(id).removeAttribute("aria-invalid")});
+    $("x_data").value=today();$("x_found").textContent="";
+    ["Fixo no posto","Desligado","Afastado","Substituto de férias"].forEach(m=>$("xb-"+m).hidden=true);
+  }
+  $("x_clear").addEventListener("click",limparSaida);
+  $("formSaida").addEventListener("submit",async e=>{
+    e.preventDefault();
+    const mot=$("x_motivo").value;
+    const extra={"Fixo no posto":["x_posto","x_filial"],"Desligado":["x_deslig"],"Afastado":["x_dias"],"Substituto de férias":["x_regiao"]}[mot]||[];
+    let bad=false;["x_mat","x_data","x_motivo",...extra].forEach(id=>{if(mark($(id),!$(id).value.trim()))bad=true});
+    if(mot==="Afastado"&&!(parseInt($("x_dias").value,10)>0)){mark($("x_dias"),true);bad=true}
+    if(bad)return showMsg($("x_msg"),"err","Preencha os campos obrigatórios destacados.");
+    if(!db)return showMsg($("x_msg"),"err","Sem conexão com a planilha. Verifique a internet e tente de novo.");
+    const r=localizarSaida();
+    if(!r){mark($("x_mat"),true);return showMsg($("x_msg"),"err","Essa matrícula não está na reserva. Confira o número ou registre a entrada primeiro.")}
+    if($("x_data").value<(r.entrada||"")){mark($("x_data"),true);return showMsg($("x_msg"),"err",`A saída não pode ser antes da entrada na reserva (${fmt(r.entrada)}).`)}
+    const upd={saidaEfetiva:$("x_data").value,motivoSaida:mot,
+      postoFixo:mot==="Fixo no posto"?$("x_posto").value.trim().toUpperCase():"",
+      filialFixo:mot==="Fixo no posto"?$("x_filial").value:"",
+      dataDesligamento:mot==="Desligado"?$("x_deslig").value:"",
+      diasAfastamento:mot==="Afastado"?parseInt($("x_dias").value,10):"",
+      regiaoFerias:mot==="Substituto de férias"?$("x_regiao").value:"",
+      saidaRegistradaPor:uid||"",saidaRegistradaEm:new Date().toISOString()};
+    $("x_submit").disabled=true;
+    try{await apiPost({action:"saida",id:r._id,data:upd});limparSaida();showMsg($("x_msg"),"ok",`Saída de ${r.nome} registrada (${mot}).`)}
+    catch(err){showMsg($("x_msg"),"err",errText(err))}
+    finally{$("x_submit").disabled=readOnly}
+  });
+
+  function detalheSaida(x){
+    if(x.motivoSaida==="Fixo no posto")return `${x.postoFixo} · ${x.filialFixo}`;
+    if(x.motivoSaida==="Desligado")return x.dataDesligamento?`em ${fmt(x.dataDesligamento)}`:"";
+    if(x.motivoSaida==="Afastado")return `${x.diasAfastamento} dias`;
+    if(x.motivoSaida==="Substituto de férias")return x.regiaoFerias;
+    return "";
+  }
+
+  function errText(err){
+    const c=err&&err.code;
+    if(c==="invalid_argument"){setReadOnly();return "Seu acesso a este link é só de leitura. Peça ao responsável para liberar acesso de Colaborador."}
+    if(c==="quota_exceeded")return "A base de registros atingiu o limite. Avise o responsável pelo link.";
+    if(c==="resource_exhausted")return "Muitos envios seguidos. Aguarde alguns segundos e tente de novo.";
+    return (err&&err.message&&err.message!=="Failed to fetch")?err.message:"Não foi possível salvar agora. Verifique a conexão e tente de novo.";
+  }
+  function setReadOnly(){readOnly=true;$("r_submit").disabled=true;$("m_submit").disabled=true;$("x_submit").disabled=true;
+    const b=$("banner");b.hidden=false;b.textContent="Você está com acesso só de leitura: pode consultar os registros, mas não lançar novos."}
+
+  /* REGISTROS */
+  ["q","fFilial","fSit","fStatus","fDe","fAte"].forEach(id=>$(id).addEventListener("input",render));
+  function filtrar(list,dateField){
+    const q=norm($("q").value),fil=$("fFilial").value,de=$("fDe").value,ate=$("fAte").value,sit=$("fSit").value;
+    return list.filter(x=>{
+      if(fil&&x.filial!==fil)return false;
+      if(sub==="mov"&&sit&&x.situacao!==sit)return false;
+      const st=$("fStatus").value;
+      if(sub==="res"&&st==="ativo"&&x.saidaEfetiva)return false;
+      if(sub==="res"&&st==="saiu"&&!x.saidaEfetiva)return false;
+      const d=x[dateField]||"";if(de&&d<de)return false;if(ate&&d>ate)return false;
+      if(q&&!norm([x.matricula,x.nome,x.local,x.matCoberto,x.nomeCoberto].join(" ")).includes(q))return false;
+      return true;
+    });
+  }
+  function podeExcluir(){return true}
+  function render(){
+    const thead=$("tbl").tHead,tbody=$("tbl").tBodies[0];
+    if(sub==="res"){
+      const rows=filtrar(reservas,"entrada").sort((a,b)=>(b.entrada||"").localeCompare(a.entrada||""));
+      const hoje=today();
+      const atv=rows.filter(x=>!x.saidaEfetiva);
+      const venc=atv.filter(x=>x.previsaoSaida&&x.previsaoSaida<hoje).length;
+      $("counts").innerHTML=`<span class="chip">${atv.length} na reserva</span><span class="chip gray">${atv.filter(x=>x.tipo==="Transitória").length} transitória</span><span class="chip gray">${atv.filter(x=>x.tipo==="Permanente").length} permanente</span>${rows.length-atv.length?`<span class="chip gray">${rows.length-atv.length} já saíram</span>`:""}${venc?`<span class="chip red">${venc} com previsão de saída vencida</span>`:""}`;
+      thead.innerHTML="<tr><th>Matrícula</th><th>Nome</th><th>Filial</th><th>Função</th><th>Escala</th><th>Tipo</th><th>Motivo da entrada</th><th>Entrada</th><th>Prev. saída</th><th>Saída efetiva</th><th></th></tr>";
+      tbody.innerHTML=rows.length?rows.map(x=>`<tr><td class="mono">${esc(x.matricula)}</td><td>${esc(x.nome)}</td><td class="mono" title="${esc(FILIAIS[x.filial]||"")}">${esc(x.filial)}</td><td>${esc(x.funcao)}</td><td class="mono">${esc(x.escala)}</td><td>${esc(x.tipo)}</td><td>${esc(x.motivo)}${x.motivoOutro?`: ${esc(x.motivoOutro)}`:""}</td><td class="mono">${fmt(x.entrada)}</td><td class="mono">${x.previsaoSaida?`<span class="${!x.saidaEfetiva&&x.previsaoSaida<hoje?"chip red":""}">${fmt(x.previsaoSaida)}</span>`:"—"}</td><td>${x.saidaEfetiva?`<span class="mono">${fmt(x.saidaEfetiva)}</span><br><span class="hint">${esc(x.motivoSaida)}${detalheSaida(x)?" · "+esc(detalheSaida(x)):""}</span>`:"—"}</td><td>${podeExcluir(x)?`<button class="btn danger small" data-del="reservas/${esc(x._id)}">Excluir</button>`:""}</td></tr>`).join("")
+        :`<tr><td colspan="11" class="empty">${db?"Nenhum colaborador com esses filtros. Os registros feitos na aba Entrada na reserva aparecem aqui.":"Carregando registros…"}</td></tr>`;
+    }else{
+      const rows=filtrar(movs,"data").sort((a,b)=>(b.data||"").localeCompare(a.data||"")||(b.criadoEm||"").localeCompare(a.criadoEm||""));
+      const n=s=>rows.filter(x=>x.situacao===s).length;
+      $("counts").innerHTML=`<span class="chip">${n("cobertura")} em cobertura</span><span class="chip gray">${n("nao_utilizado")} não utilizado</span><span class="chip warn">${n("ocorrencia")} ocorrência</span>`;
+      thead.innerHTML="<tr><th>Data</th><th>Situação</th><th>Matrícula</th><th>Nome (reserva)</th><th>Filial</th><th>Função / Escala</th><th>Posto de cobertura</th><th>Colaborador coberto</th><th>Motivo</th><th></th></tr>";
+      tbody.innerHTML=rows.length?rows.map(x=>`<tr><td class="mono">${fmt(x.data)}</td><td><span class="chip ${x.situacao==="cobertura"?"":x.situacao==="ocorrencia"?"warn":"gray"}">${SIT[x.situacao]||esc(x.situacao)}</span></td><td class="mono">${esc(x.matricula)}</td><td>${esc(x.nome)}</td><td class="mono">${esc(x.filial||"—")}</td><td>${x.funcao?`${esc(x.funcao)} · ${esc(x.escala)}`:"—"}</td><td>${esc(x.local||"—")}</td><td>${x.matCoberto?`<span class="mono">${esc(x.matCoberto)}</span> ${esc(x.nomeCoberto)}`:"—"}</td><td>${esc(x.motivo||"—")}</td><td>${podeExcluir(x)?`<button class="btn danger small" data-del="movimentacoes/${esc(x._id)}">Excluir</button>`:""}</td></tr>`).join("")
+        :`<tr><td colspan="10" class="empty">${db?"Nenhuma situação registrada com esses filtros. Os lançamentos da aba Situação do dia aparecem aqui.":"Carregando registros…"}</td></tr>`;
+    }
+  }
+  /* exclusão com confirmação em dois cliques */
+  $("tbl").addEventListener("click",async e=>{
+    const b=e.target.closest("[data-del]");if(!b||!db)return;
+    if(!b.dataset.armed){b.dataset.armed="1";b.textContent="Confirmar";setTimeout(()=>{if(b.isConnected){delete b.dataset.armed;b.textContent="Excluir"}},4000);return}
+    b.disabled=true;
+    try{const [tipo,id]=b.dataset.del.split("/");await apiPost({action:"delete",tipo,id})}catch(err){b.disabled=false;$("status").textContent=errText(err)}
+  });
+
+  /* PLANILHA EXCEL: uma linha por situação do dia, com os dados da reserva;
+     quem está na reserva sem nenhuma situação lançada aparece numa linha própria */
+  const COLS=["Matrícula","Nome do colaborador","Filial","Função","Escala","Tipo de reserva","Motivo da entrada","Entrada na reserva","Previsão de saída","Saída efetiva","Data do Registro","Situação do dia","Local da cobertura","Matrícula do titular"];
+  const dt=s=>s?new Date(s+"T12:00:00"):"";
+  function linhasPlanilha(){
+    const fil=$("fFilial").value,de=$("fDe").value,ate=$("fAte").value;
+    const usadas=new Set(),out=[];
+    const daMat=m=>reservas.filter(r=>r.matricula===m).sort((a,b)=>(b.entrada||"").localeCompare(a.entrada||""));
+    movs.forEach(mv=>{
+      const lista=daMat(mv.matricula);
+      const r=lista.find(x=>(x.entrada||"")<=mv.data&&(!x.saidaEfetiva||x.saidaEfetiva>=mv.data))||lista[0];
+      if(r)usadas.add(r._id);
+      out.push({r,mv,ref:mv.data});
+    });
+    reservas.forEach(r=>{if(!usadas.has(r._id))out.push({r,mv:null,ref:r.entrada})});
+    return out.filter(({r,mv,ref})=>{
+      const f=(r&&r.filial)||(mv&&mv.filial)||"";
+      if(fil&&f!==fil)return false;if(de&&(ref||"")<de)return false;if(ate&&(ref||"")>ate)return false;return true;
+    }).sort((a,b)=>{const ma=(a.r||a.mv).matricula,mb=(b.r||b.mv).matricula;return ma.localeCompare(mb,"pt",{numeric:true})||(a.ref||"").localeCompare(b.ref||"")})
+    .map(({r,mv})=>{r=r||{};mv=mv||{};return {
+      "Matrícula":r.matricula||mv.matricula||"","Nome do colaborador":r.nome||mv.nome||"","Filial":r.filial||mv.filial||"",
+      "Função":r.funcao||mv.funcao||"","Escala":r.escala||mv.escala||"","Tipo de reserva":r.tipo||"",
+      "Motivo da entrada":r.motivo?(r.motivo+(r.motivoOutro?": "+r.motivoOutro:"")):"",
+      "Entrada na reserva":dt(r.entrada),"Previsão de saída":dt(r.previsaoSaida),"Saída efetiva":dt(r.saidaEfetiva),
+      "Data do Registro":dt(mv.data),"Situação do dia":mv.situacao?SIT[mv.situacao]:"",
+      "Local da cobertura":mv.local||"","Matrícula do titular":mv.matCoberto||""}});
+  }
+  $("btnXlsx").addEventListener("click",async()=>{
+    if(!window.XLSX){$("status").textContent="O gerador de planilha não carregou. Recarregue a página e tente de novo.";return}
+    const ws=XLSX.utils.json_to_sheet(linhasPlanilha(),{header:COLS,cellDates:true,dateNF:"dd/mm/yyyy"});
+    ws["!cols"]=[10,32,8,24,8,15,26,14,14,14,14,16,30,18].map(w=>({wch:w}));
+    const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,"Reserva");
+    XLSX.writeFile(wb,`reserva_${today()}.xlsx`,{cellDates:true});
+  });
+
+  render();
+
+  /* conexão com a planilha (Google Apps Script) */
+  db=/^https:\/\/script\.google\.com\//.test(API_URL)?true:null;
+  async function refresh(){
+    try{
+      const r=await fetch(API_URL+"?t="+Date.now());const j=await r.json();
+      if(!j.ok)throw new Error(j.error);
+      reservas=(j.reservas||[]).map(x=>Object.assign({_id:x.id},x));
+      movs=(j.movs||[]).map(x=>Object.assign({_id:x.id},x));
+      const mats=[...new Map(ativas().map(r=>[r.matricula,r])).values()];
+      $("listaReserva").innerHTML=mats.map(r=>`<option value="${esc(r.matricula)}">${esc(r.nome)}</option>`).join("");
+      render();
+      $("status").textContent="Atualizado às "+new Date().toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"});
+    }catch(e){$("status").textContent="Não foi possível carregar os registros. Verifique a internet e recarregue a página."}
+  }
+  if(!db){const b=$("banner");b.hidden=false;b.textContent="Página ainda não ligada à planilha: cole a URL do Apps Script em API_URL, no início do arquivo index.html.";render()}
+  else{refresh();setInterval(()=>{if(!document.hidden)refresh()},60000);document.addEventListener("visibilitychange",()=>{if(!document.hidden)refresh()})}
+})();
+</script>
+
+</body>
+</html>
