@@ -12,7 +12,7 @@ Os registros são gravados numa planilha Google.
 | Arquivo | Para que serve |
 |---|---|
 | `index.html` | O site. Vai para o GitHub. |
-| `Code.gs` | O script que grava na planilha. Vai para o Google Apps Script, **não** para o GitHub. |
+| `apps-script/Code.gs` | O script que grava na planilha. Fica aqui só como cópia: ele roda no Google Apps Script. |
 
 ## Passo 1: planilha e script (Google)
 
