@@ -53,6 +53,7 @@ textarea{min-height:76px;resize:vertical}
 input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-offset:0;border-color:var(--accent)}
 input[aria-invalid="true"],select[aria-invalid="true"]{border-color:var(--danger)}
 .hint{font-size:12.5px;color:var(--muted)}
+label.f>span.hint{text-transform:none;letter-spacing:0;font-weight:400;font-size:12.5px}
 .seg{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px}
 .seg label{display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:999px;padding:8px 14px;cursor:pointer;font-weight:600;font-size:14px;background:var(--bg)}
 .seg input{width:auto;accent-color:var(--accent)}
@@ -199,7 +200,7 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
           <label class="f"><span>Nome (colaborador coberto) <em>*</em></span><input id="c_nome2" autocomplete="off"></label>
           <label class="f"><span>Escala do colaborador coberto <em>*</em></span>
             <select id="c_escalaCob"><option value="">Selecione</option><option>12X36</option><option>5X2</option><option>6X1</option><option>5X1</option></select>
-            <span class="hint">É esta escala que define os dias lançados no período.</span></label>
+            <span class="hint">Define os dias lançados no período. Se ficar em branco, vale a escala do colaborador da reserva.</span></label>
           <div class="f"><span class="hint" style="font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase">Horário de trabalho</span>
             <div style="display:flex;gap:8px;align-items:center"><input id="c_hIni" type="time" aria-label="Horário de início"><span class="hint">às</span><input id="c_hFim" type="time" aria-label="Horário de término"></div></div>
           <label class="f"><span>Motivo da cobertura <em>*</em></span>
@@ -408,7 +409,7 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
     if(!COB(s))return [ini];
     const fim=$("m_ate").value||ini,periodo=fim!==ini;
     /* quem está na reserva passa a trabalhar na escala de quem está cobrindo */
-    const escT=periodo?$("c_escalaCob").value:"";
+    const escT=periodo?escalaDias():"";
     const alterna=escT==="12X36";
     if(fim<ini)return null;
     const out=[],d=new Date(ini+"T12:00:00"),end=new Date(fim+"T12:00:00"),par=d.getDate()%2;
@@ -419,17 +420,18 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
     }
     return out;
   }
+  const escalaDias=()=>$("c_escalaCob").value||$("c_escala").value;
   const jaLancado=(mat,iso)=>movs.some(x=>x.matricula===mat&&x.data===iso);
   /* cobertura em escala 12x36: depois de um plantão 12x36 vem um dia de folga.
      Devolve o plantão vizinho que impede o lançamento, ou "" se estiver livre.
      Virada de 31 para 01 é permitida (regra de dias ímpares). */
   function conflito12x36(mat,iso){
-    if(!mat||$("c_escalaCob").value!=="12X36")return "";
+    if(!mat||escalaDias()!=="12X36")return "";
     const d=new Date(iso+"T12:00:00");
     for(const k of [-1,1]){
       const v=new Date(d);v.setDate(v.getDate()+k);const vi=isoDe(v);
       const viradaImpar=d.getMonth()!==v.getMonth()&&d.getDate()%2===1&&v.getDate()%2===1;
-      if(!viradaImpar&&movs.some(x=>x.matricula===mat&&x.data===vi&&COB(x.situacao)&&x.escalaCoberto==="12X36"))return vi;
+      if(!viradaImpar&&movs.some(x=>x.matricula===mat&&x.data===vi&&COB(x.situacao)&&(x.escalaCoberto||x.escala)==="12X36"))return vi;
     }
     return "";
   }
@@ -438,7 +440,7 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
     $("m_diasWrap").hidden=!COB(s);
     if(!COB(s))return;
     const dias=diasDoLancamento(),mat=$("m_mat").value.trim(),hoje=today(),periodo=!!$("m_ate").value&&$("m_ate").value!==$("m_data").value;
-    const esc=periodo?$("c_escalaCob").value:"";
+    const esc=periodo?escalaDias():"",daReserva=!$("c_escalaCob").value;
     if(dias===null){$("m_diasInfo").textContent="A data final não pode ser antes da data inicial.";$("m_dias").innerHTML="";return}
     if(!dias.length){$("m_diasInfo").textContent=!$("m_data").value?"Escolha a data para ver os dias que serão lançados.":"Nenhum dia no período.";$("m_dias").innerHTML="";return}
     let n=0,fut=0,bloq12=0;
@@ -448,11 +450,12 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
       if(viz)bloq12++;
       return `<button type="button" class="dia${f?" fut":""}" data-iso="${iso}" aria-pressed="${on}"${dup?' disabled title="Já existe lançamento nesse dia"':viz?` disabled title="Folga da escala 12x36: trabalhou em ${fmt(viz).slice(0,5)}"`:""}>${DSEM[new Date(iso+"T12:00:00").getDay()]} ${fmt(iso).slice(0,5)}</button>`;
     }).join("");
-    const regra=esc==="12X36"?` Seguindo a escala do coberto (12x36): dias ${new Date($("m_data").value+"T12:00:00").getDate()%2?"ímpares":"pares"}.`:esc==="5X2"?" Seguindo a escala do coberto (5x2): segunda a sexta.":esc?` Seguindo a escala do coberto (${esc.toLowerCase()}): toque nos dias de folga para tirar.`:"";
+    const quem=daReserva?"da reserva":"do coberto";
+    const regra=esc==="12X36"?` Seguindo a escala ${quem} (12x36): dias ${new Date($("m_data").value+"T12:00:00").getDate()%2?"ímpares":"pares"}.`:esc==="5X2"?` Seguindo a escala ${quem} (5x2): segunda a sexta.`:esc?` Seguindo a escala ${quem} (${esc.toLowerCase()}): toque nos dias de folga para tirar.`:"";
     $("m_diasInfo").textContent=`${n} ${n===1?"dia será lançado":"dias serão lançados"}.${regra}`+(fut?` ${fut===1?"1 dia é futuro e vai":fut+" dias são futuros e vão"} como Programado.`:"")+(bloq12?` ${bloq12===1?"1 dia bloqueado":bloq12+" dias bloqueados"} por ser folga da escala 12x36 (dia seguinte ou anterior a um plantão já lançado).`:"");
   }
   $("m_dias").addEventListener("click",e=>{const b=e.target.closest(".dia");if(!b||b.disabled)return;const iso=b.dataset.iso;excluidos.has(iso)?excluidos.delete(iso):excluidos.add(iso);atualizarDias()});
-  ["m_data","m_ate","c_escalaCob"].forEach(id=>$(id).addEventListener("change",()=>{excluidos.clear();atualizarDias()}));
+  ["m_data","m_ate","c_escalaCob","c_escala"].forEach(id=>$(id).addEventListener("change",()=>{excluidos.clear();atualizarDias()}));
   const fmtHora=(a,b)=>a&&b?`${a.replace(":","h")} às ${b.replace(":","h")}`:"";
   function sugerirHorario(){
     if($("c_hIni").value||$("c_hFim").value||$("c_escalaCob").value!=="12X36")return;
