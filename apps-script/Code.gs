@@ -152,7 +152,10 @@ function ler_(nome, cols) {
 function inserir_(nome, cols, dados) {
   const sh = aba_(nome, cols);
   dados.id = Utilities.getUuid();
-  sh.appendRow(cols.map(c => dados[c] == null ? "" : String(dados[c])));
+  const linha = sh.getLastRow() + 1;
+  const rng = sh.getRange(linha, 1, 1, cols.length);
+  rng.setNumberFormat("@");
+  rng.setValues([cols.map(c => texto_(dados[c]))]);
 }
 
 function linhaDoId_(sh, id) {
@@ -167,13 +170,19 @@ function atualizar_(nome, cols, id, dados) {
   const linha = linhaDoId_(sh, id);
   Object.keys(dados).forEach(c => {
     const col = cols.indexOf(c);
-    if (col >= 0) sh.getRange(linha, col + 1).setValue(dados[c] == null ? "" : String(dados[c]));
+    if (col >= 0) sh.getRange(linha, col + 1).setNumberFormat("@").setValue(texto_(dados[c]));
   });
 }
 
 function excluir_(nome, id) {
   const sh = aba_(nome, nome === ABA_RES ? RES_COLS : MOV_COLS);
   sh.deleteRow(linhaDoId_(sh, id));
+}
+
+/** Grava sempre como texto: mantém zeros à esquerda (matrícula 0001, filial 0101) e datas como estão. */
+function texto_(v) {
+  if (v == null || v === "") return "";
+  return "'" + String(v);
 }
 
 function exigir_(d, campos) {
