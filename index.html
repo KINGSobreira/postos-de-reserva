@@ -271,6 +271,7 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
       <label class="f"><span>De</span><input id="fDe" type="date"></label>
       <label class="f"><span>Até</span><input id="fAte" type="date"></label>
       <button class="btn ghost" type="button" id="btnXlsx">Baixar planilha Excel</button>
+      <button class="btn ghost" type="button" id="btnControle">Baixar Controle de Reservas</button>
     </div>
     <div class="counts" id="counts"></div>
     <div class="tablebox"><table id="tbl"><thead></thead><tbody></tbody></table></div>
@@ -280,6 +281,7 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
 </main>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script>
 (function(){
   const API_URL=window.API_URL||"";
@@ -515,6 +517,57 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
   });
 
   render();
+
+  /* CONTROLE DE RESERVAS: preenche o modelo (modelo-controle-reservas.xlsx) mantendo fórmulas,
+     listas, cores e o Painel mensal. Uma linha por reserva e dia, a partir da linha 14. */
+  const MESES=["JANEIRO","FEVEREIRO","MARÇO","ABRIL","MAIO","JUNHO","JULHO","AGOSTO","SETEMBRO","OUTUBRO","NOVEMBRO","DEZEMBRO"];
+  const xmlEsc=v=>String(v).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+  const serial=s=>{const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(s||"");return m?(Date.UTC(+m[1],+m[2]-1,+m[3])-Date.UTC(1899,11,30))/864e5:null};
+  const tituloCaso=s=>{s=String(s||"").toLowerCase();return s?s.charAt(0).toUpperCase()+s.slice(1):""};
+  function linhasControle(){
+    const usadas=new Set(),out=[];
+    const daMat=m=>reservas.filter(r=>r.matricula===m).sort((a,b)=>(b.entrada||"").localeCompare(a.entrada||""));
+    movs.forEach(mv=>{
+      const lista=daMat(mv.matricula);
+      const r=lista.find(x=>(x.entrada||"")<=mv.data&&(!x.saidaEfetiva||x.saidaEfetiva>=mv.data))||lista[0];
+      if(r)usadas.add(r._id);
+      out.push({r:r||{},mv});
+    });
+    reservas.forEach(r=>{if(!usadas.has(r._id))out.push({r,mv:{}})});
+    out.sort((a,b)=>{const ma=a.r.matricula||a.mv.matricula||"",mb=b.r.matricula||b.mv.matricula||"";
+      return ma.localeCompare(mb,"pt",{numeric:true})||(a.mv.data||a.r.entrada||"").localeCompare(b.mv.data||b.r.entrada||"")});
+    return out.map(({r,mv})=>({
+      A:r.matricula||mv.matricula||"",B:r.nome||mv.nome||"",C:r.filial||mv.filial||"",
+      D:tituloCaso(r.funcao||mv.funcao),E:String(r.escala||mv.escala||"").toLowerCase(),F:r.tipo||"",G:r.motivo||"",
+      H:serial(r.entrada),I:serial(r.previsaoSaida),J:serial(r.saidaEfetiva),K:serial(mv.data),
+      L:mv.situacao?SIT[mv.situacao]:"",M:mv.local||"",N:mv.matCoberto||""}));
+  }
+  $("btnControle").addEventListener("click",async()=>{
+    const btn=$("btnControle");
+    if(!window.JSZip){$("status").textContent="O gerador da planilha não carregou. Recarregue a página e tente de novo.";return}
+    btn.disabled=true;const txt=btn.textContent;btn.textContent="Gerando planilha…";
+    try{
+      const rows=linhasControle();
+      if(rows.length>2000)$("status").textContent=`O modelo comporta 2.000 linhas; ${rows.length-2000} registros mais recentes ficaram de fora.`;
+      const mapa={};rows.slice(0,2000).forEach((x,i)=>mapa[14+i]=x);
+      const buf=await (await fetch("modelo-controle-reservas.xlsx",{cache:"no-store"})).arrayBuffer();
+      const zip=await JSZip.loadAsync(buf);
+      const path="xl/worksheets/sheet1.xml";
+      let xml=await zip.file(path).async("string");
+      xml=xml.replace(/<c r="([A-N])(\d+)" s="(\d+)"\/>/g,(m,col,row,st)=>{
+        const lin=mapa[row];if(!lin)return m;const v=lin[col];
+        if(v===null||v===undefined||v==="")return m;
+        if(typeof v==="number")return `<c r="${col}${row}" s="${st}"><v>${v}</v></c>`;
+        return `<c r="${col}${row}" s="${st}" t="inlineStr"><is><t>${xmlEsc(v)}</t></is></c>`;
+      });
+      zip.file(path,xml);
+      const blob=await zip.generateAsync({type:"blob",compression:"DEFLATE",mimeType:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});
+      const d=new Date(),nome=`CONTROLE_DE_RESERVAS_-_${MESES[d.getMonth()]}_${d.getFullYear()}.xlsx`;
+      const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=nome;document.body.appendChild(a);a.click();
+      setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},2000);
+    }catch(e){$("status").textContent="Não foi possível gerar a planilha. Recarregue a página e tente de novo."}
+    finally{btn.disabled=false;btn.textContent=txt}
+  });
 
   /* conexão com a planilha (Google Apps Script) */
   db=/^https:\/\/script\.google\.com\//.test(API_URL)?true:null;
