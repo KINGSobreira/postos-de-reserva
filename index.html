@@ -198,7 +198,8 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
           <label class="f"><span>Matrícula (colaborador coberto) <em>*</em></span><input id="c_mat2" inputmode="numeric" autocomplete="off"></label>
           <label class="f"><span>Nome (colaborador coberto) <em>*</em></span><input id="c_nome2" autocomplete="off"></label>
           <label class="f"><span>Escala do colaborador coberto <em>*</em></span>
-            <select id="c_escalaCob"><option value="">Selecione</option><option>12X36</option><option>5X2</option><option>6X1</option><option>5X1</option></select></label>
+            <select id="c_escalaCob"><option value="">Selecione</option><option>12X36</option><option>5X2</option><option>6X1</option><option>5X1</option></select>
+            <span class="hint">É esta escala que define os dias lançados no período.</span></label>
           <div class="f"><span class="hint" style="font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase">Horário de trabalho</span>
             <div style="display:flex;gap:8px;align-items:center"><input id="c_hIni" type="time" aria-label="Horário de início"><span class="hint">às</span><input id="c_hFim" type="time" aria-label="Horário de término"></div></div>
           <label class="f"><span>Motivo da cobertura <em>*</em></span>
@@ -447,7 +448,7 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
       if(viz)bloq12++;
       return `<button type="button" class="dia${f?" fut":""}" data-iso="${iso}" aria-pressed="${on}"${dup?' disabled title="Já existe lançamento nesse dia"':viz?` disabled title="Folga da escala 12x36: trabalhou em ${fmt(viz).slice(0,5)}"`:""}>${DSEM[new Date(iso+"T12:00:00").getDay()]} ${fmt(iso).slice(0,5)}</button>`;
     }).join("");
-    const regra=esc==="12X36"?` Escala 12x36: dias ${new Date($("m_data").value+"T12:00:00").getDate()%2?"ímpares":"pares"}.`:esc==="5X2"?" Escala do coberto 5x2: segunda a sexta.":esc?" Toque nos dias de folga para tirar.":"";
+    const regra=esc==="12X36"?` Seguindo a escala do coberto (12x36): dias ${new Date($("m_data").value+"T12:00:00").getDate()%2?"ímpares":"pares"}.`:esc==="5X2"?" Seguindo a escala do coberto (5x2): segunda a sexta.":esc?` Seguindo a escala do coberto (${esc.toLowerCase()}): toque nos dias de folga para tirar.`:"";
     $("m_diasInfo").textContent=`${n} ${n===1?"dia será lançado":"dias serão lançados"}.${regra}`+(fut?` ${fut===1?"1 dia é futuro e vai":fut+" dias são futuros e vão"} como Programado.`:"")+(bloq12?` ${bloq12===1?"1 dia bloqueado":bloq12+" dias bloqueados"} por ser folga da escala 12x36 (dia seguinte ou anterior a um plantão já lançado).`:"");
   }
   $("m_dias").addEventListener("click",e=>{const b=e.target.closest(".dia");if(!b||b.disabled)return;const iso=b.dataset.iso;excluidos.has(iso)?excluidos.delete(iso):excluidos.add(iso);atualizarDias()});
