@@ -626,7 +626,7 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
       A:r.matricula||mv.matricula||"",B:r.nome||mv.nome||"",C:r.filial||mv.filial||"",
       D:tituloCaso(r.funcao||mv.funcao),E:String(r.escala||mv.escala||"").toLowerCase(),F:r.tipo||"",G:r.motivo||"",
       H:serial(r.entrada),I:serial(r.previsaoSaida),J:serial(r.saidaEfetiva),K:serial(mv.data),
-      L:mv.situacao?SIT[mv.situacao]:"",M:mv.local||"",N:mv.matCoberto||""}));
+      L:mv.situacao?SIT[mv.situacao]:"",M:mv.local?(mv.local+(mv.turno?" — "+mv.turno:"")):"",N:mv.matCoberto||""}));
   }
   $("btnControle").addEventListener("click",async()=>{
     const btn=$("btnControle");
