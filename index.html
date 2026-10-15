@@ -133,9 +133,10 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
         <label class="f"><span>Matrícula <em>*</em></span><input id="r_mat" name="matricula" inputmode="numeric" autocomplete="off" required></label>
         <label class="f"><span>Nome do colaborador <em>*</em></span><input id="r_nome" name="nome" autocomplete="off" required></label>
         <label class="f"><span>Filial <em>*</em></span>
-          <select id="r_filial" name="filial" required><option value="">Selecione</option><option>0101</option><option>0102</option><option>0103</option><option>0501</option></select></label>
+          <select id="r_filial" name="filial" required><option value="">Selecione</option><option value="0101">0101 - SERVNAC SEGURANCA LTDA</option><option value="0102">0102 - SERVNAC SEGURANCA LTDA RN</option><option value="0103">0103 - SERVNAC SEGURANCA LTDA SP</option><option value="0201">0201 - SERVNAC SOLUCOES CORPORATIVAS</option><option value="0301">0301 - SERVNAC NEGOCIOS LTDA</option><option value="0401">0401 - SERVNAC FACILITIES LTDA</option><option value="0501">0501 - VERDE SEGURANCA DE VALORES LTDA</option><option value="0601">0601 - SERVNAC TERCEIRIZACAO LTDA</option></select></label>
         <label class="f"><span>Função <em>*</em></span>
-          <select id="r_funcao" name="funcao" required><option value="">Selecione</option><option>VIGILANTE</option><option>SUPERVISOR DE VIGILANTE</option></select></label>
+          <select id="r_funcao" name="funcao" required><option value="">Selecione</option><option>VIGILANTE</option><option>SUPERVISOR DE VIGILANTE</option><option>PORTEIRO</option><option>ASG</option><option value="OUTRA">Outra função</option></select></label>
+        <label class="f" id="r_funcaoOutraWrap" hidden><span>Qual função? <em>*</em></span><input id="r_funcaoOutra" autocomplete="off"></label>
         <label class="f"><span>Escala <em>*</em></span>
           <select id="r_escala" name="escala" required><option value="">Selecione</option><option>12X36</option><option>5X2</option><option>6X1</option><option>5X1</option></select></label>
         <label class="f"><span>Tipo de reserva <em>*</em></span>
@@ -144,7 +145,9 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
           <select id="r_motivo" name="motivo" required><option value="">Selecione</option><option>Reserva permanente</option><option>Retorno de afastamento</option><option>Fim de contrato</option><option>Aguardando posto fixo</option><option>Aguardando desligamento</option><option>Devolvido pelo cliente</option><option>Outro</option></select></label>
         <label class="f full" id="r_outroWrap" hidden><span>Descreva o motivo <em>*</em></span><input id="r_outro" name="motivoOutro" autocomplete="off"></label>
         <label class="f"><span>Entrada na reserva <em>*</em></span><input id="r_entrada" name="entrada" type="date" required></label>
-        <label class="f"><span>Previsão de saída</span><input id="r_saida" name="previsaoSaida" type="date"></label>
+        <label class="f"><span>Previsão de saída</span><input id="r_saida" name="previsaoSaida" type="date" aria-describedby="r_saidaHint"><span class="hint" id="r_saidaHint">Opcional. Se ainda não houver previsão, deixe em branco e registre normalmente.</span></label>
+        <label class="f"><span>Turno <em>*</em></span>
+          <select id="r_turno" name="turno" required><option value="">Selecione</option><option>DIURNO</option><option>NOTURNO</option></select></label>
       </div>
       <div class="actions">
         <button class="btn primary" type="submit" id="r_submit">Registrar entrada</button>
@@ -181,9 +184,10 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
         <h3 id="c_titulo">Em cobertura</h3>
         <div class="grid">
           <label class="f"><span>Filial <em>*</em></span>
-            <select id="c_filial"><option value="">Selecione</option><option>0101</option><option>0102</option><option>0103</option><option>0501</option></select></label>
+            <select id="c_filial"><option value="">Selecione</option><option value="0101">0101 - SERVNAC SEGURANCA LTDA</option><option value="0102">0102 - SERVNAC SEGURANCA LTDA RN</option><option value="0103">0103 - SERVNAC SEGURANCA LTDA SP</option><option value="0201">0201 - SERVNAC SOLUCOES CORPORATIVAS</option><option value="0301">0301 - SERVNAC NEGOCIOS LTDA</option><option value="0401">0401 - SERVNAC FACILITIES LTDA</option><option value="0501">0501 - VERDE SEGURANCA DE VALORES LTDA</option><option value="0601">0601 - SERVNAC TERCEIRIZACAO LTDA</option></select></label>
           <label class="f"><span>Função <em>*</em></span>
-            <select id="c_funcao"><option value="">Selecione</option><option>VIGILANTE</option><option>SUPERVISOR DE VIGILANTE</option></select></label>
+            <select id="c_funcao"><option value="">Selecione</option><option>VIGILANTE</option><option>SUPERVISOR DE VIGILANTE</option><option>PORTEIRO</option><option>ASG</option><option value="OUTRA">Outra função</option></select></label>
+          <label class="f" id="c_funcaoOutraWrap" hidden><span>Qual função? <em>*</em></span><input id="c_funcaoOutra" autocomplete="off"></label>
           <label class="f"><span>Escala <em>*</em></span>
             <select id="c_escala"><option value="">Selecione</option><option>12X36</option><option>5X2</option><option>6X1</option><option>5X1</option></select></label>
           <label class="f"><span>Turno <em>*</em></span>
@@ -240,7 +244,7 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
         <div class="grid">
           <label class="f"><span>Nome do posto <em>*</em></span><input id="x_posto" autocomplete="off"></label>
           <label class="f"><span>Filial <em>*</em></span>
-            <select id="x_filial"><option value="">Selecione</option><option>0101</option><option>0102</option><option>0103</option><option>0501</option></select></label>
+            <select id="x_filial"><option value="">Selecione</option><option value="0101">0101 - SERVNAC SEGURANCA LTDA</option><option value="0102">0102 - SERVNAC SEGURANCA LTDA RN</option><option value="0103">0103 - SERVNAC SEGURANCA LTDA SP</option><option value="0201">0201 - SERVNAC SOLUCOES CORPORATIVAS</option><option value="0301">0301 - SERVNAC NEGOCIOS LTDA</option><option value="0401">0401 - SERVNAC FACILITIES LTDA</option><option value="0501">0501 - VERDE SEGURANCA DE VALORES LTDA</option><option value="0601">0601 - SERVNAC TERCEIRIZACAO LTDA</option></select></label>
         </div>
       </div>
       <div class="sub" id="xb-Desligado" hidden>
@@ -260,6 +264,11 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
         <div class="grid">
           <label class="f"><span>Região <em>*</em></span>
             <select id="x_regiao"><option value="">Selecione</option><option>CAPITAL</option><option>INT. NORTE</option><option>INT. SUL</option></select></label>
+          <label class="f"><span>Filial <em>*</em></span>
+            <select id="x_fFilial"><option value="">Selecione</option><option value="0101">0101 - SERVNAC SEGURANCA LTDA</option><option value="0102">0102 - SERVNAC SEGURANCA LTDA RN</option><option value="0103">0103 - SERVNAC SEGURANCA LTDA SP</option><option value="0201">0201 - SERVNAC SOLUCOES CORPORATIVAS</option><option value="0301">0301 - SERVNAC NEGOCIOS LTDA</option><option value="0401">0401 - SERVNAC FACILITIES LTDA</option><option value="0501">0501 - VERDE SEGURANCA DE VALORES LTDA</option><option value="0601">0601 - SERVNAC TERCEIRIZACAO LTDA</option></select></label>
+          <label class="f full"><span>Posto de serviço <em>*</em></span><input id="x_fPosto" autocomplete="off"></label>
+          <label class="f"><span>Matrícula (colaborador coberto) <em>*</em></span><input id="x_fMat" inputmode="numeric" autocomplete="off"></label>
+          <label class="f"><span>Nome (colaborador coberto) <em>*</em></span><input id="x_fNome" autocomplete="off"></label>
         </div>
       </div>
 
@@ -281,7 +290,7 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
     </div>
     <div class="toolbar">
       <label class="f"><span>Buscar</span><input id="q" placeholder="Matrícula, nome ou posto" autocomplete="off"></label>
-      <label class="f"><span>Filial</span><select id="fFilial"><option value="">Todas</option><option>0101</option><option>0102</option><option>0103</option><option>0501</option></select></label>
+      <label class="f"><span>Filial</span><select id="fFilial"><option value="">Todas</option><option value="0101">0101 - SERVNAC SEGURANCA LTDA</option><option value="0102">0102 - SERVNAC SEGURANCA LTDA RN</option><option value="0103">0103 - SERVNAC SEGURANCA LTDA SP</option><option value="0201">0201 - SERVNAC SOLUCOES CORPORATIVAS</option><option value="0301">0301 - SERVNAC NEGOCIOS LTDA</option><option value="0401">0401 - SERVNAC FACILITIES LTDA</option><option value="0501">0501 - VERDE SEGURANCA DE VALORES LTDA</option><option value="0601">0601 - SERVNAC TERCEIRIZACAO LTDA</option></select></label>
       <label class="f" id="fStatusWrap"><span>Status</span><select id="fStatus"><option value="ativo">Na reserva</option><option value="saiu">Já saíram</option><option value="">Todos</option></select></label>
       <label class="f" id="fSitWrap" hidden><span>Situação</span><select id="fSit"><option value="">Todas</option><option value="cobertura">Em cobertura</option><option value="programado">Programado</option><option value="disponivel">Disponível</option><option value="nao_utilizado">Não utilizado</option><option value="folga">Folga</option><option value="ocorrencia">Ocorrência</option></select></label>
       <label class="f"><span>De</span><input id="fDe" type="date"></label>
@@ -319,7 +328,7 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
       await refresh();
     }
   }
-  const FILIAIS={"0101":"SERVNAC SEGURANÇA","0102":"SERVNAC SEGURANÇA RN","0103":"SERVNAC SEGURANÇA SP","0501":"VERDE SEGURANÇA"};
+  const FILIAIS={"0101":"SERVNAC SEGURANCA LTDA","0102":"SERVNAC SEGURANCA LTDA RN","0103":"SERVNAC SEGURANCA LTDA SP","0201":"SERVNAC SOLUCOES CORPORATIVAS","0301":"SERVNAC NEGOCIOS LTDA","0401":"SERVNAC FACILITIES LTDA","0501":"VERDE SEGURANCA DE VALORES LTDA","0601":"SERVNAC TERCEIRIZACAO LTDA"};
   const SIT={cobertura:"Em cobertura",programado:"Programado",disponivel:"Disponível",nao_utilizado:"Não utilizado",folga:"Folga",ocorrencia:"Ocorrência"};
   let db=null,user=null,uid=null,downloads=null,canAdmin=false,readOnly=false;
   let reservas=[],movs=[],sub="res";
@@ -343,20 +352,31 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
   function showMsg(el,kind,text){el.className="msg "+kind;el.textContent=text;el.hidden=false;clearTimeout(el._t);el._t=setTimeout(()=>el.hidden=true,6000)}
   function mark(el,bad){el.setAttribute("aria-invalid",bad?"true":"false");return bad}
 
+  /* função "Outra": mostra o campo de texto e devolve o valor final */
+  const FUNCOES=["VIGILANTE","SUPERVISOR DE VIGILANTE","PORTEIRO","ASG"];
+  [["r_funcao","r_funcaoOutraWrap"],["c_funcao","c_funcaoOutraWrap"]].forEach(([sel,wrap])=>$(sel).addEventListener("change",()=>{$(wrap).hidden=$(sel).value!=="OUTRA"}));
+  const valorFuncao=p=>$(p+"_funcao").value==="OUTRA"?$(p+"_funcaoOutra").value.trim().toUpperCase():$(p+"_funcao").value;
+  function setFuncao(p,v){
+    if(!v){$(p+"_funcao").value="";$(p+"_funcaoOutraWrap").hidden=true;return}
+    if(FUNCOES.includes(v)){$(p+"_funcao").value=v;$(p+"_funcaoOutraWrap").hidden=true}
+    else{$(p+"_funcao").value="OUTRA";$(p+"_funcaoOutra").value=v;$(p+"_funcaoOutraWrap").hidden=false}
+  }
+
   /* ENTRADA NA RESERVA */
   $("r_entrada").value=today();
   $("r_motivo").addEventListener("change",()=>{$("r_outroWrap").hidden=$("r_motivo").value!=="Outro"});
-  $("formReserva").addEventListener("reset",()=>setTimeout(()=>{$("r_outroWrap").hidden=true;$("r_entrada").value=today();document.querySelectorAll("#formReserva [aria-invalid]").forEach(e=>e.removeAttribute("aria-invalid"))}));
+  $("formReserva").addEventListener("reset",()=>setTimeout(()=>{$("r_outroWrap").hidden=true;$("r_funcaoOutraWrap").hidden=true;$("r_entrada").value=today();document.querySelectorAll("#formReserva [aria-invalid]").forEach(e=>e.removeAttribute("aria-invalid"))}));
   $("formReserva").addEventListener("submit",async e=>{
     e.preventDefault();
-    const req=["r_mat","r_nome","r_filial","r_funcao","r_escala","r_tipo","r_motivo","r_entrada"];
+    const req=["r_mat","r_nome","r_filial","r_funcao","r_escala","r_turno","r_tipo","r_motivo","r_entrada"];
     let bad=false;req.forEach(id=>{if(mark($(id),!$(id).value.trim()))bad=true});
+    if($("r_funcao").value==="OUTRA"&&mark($("r_funcaoOutra"),!$("r_funcaoOutra").value.trim()))bad=true;
     if($("r_motivo").value==="Outro"&&mark($("r_outro"),!$("r_outro").value.trim()))bad=true;
     if(bad)return showMsg($("r_msg"),"err","Preencha os campos obrigatórios destacados.");
     if($("r_saida").value&&$("r_saida").value<$("r_entrada").value){mark($("r_saida"),true);return showMsg($("r_msg"),"err","A previsão de saída não pode ser antes da entrada.")}
     mark($("r_saida"),false);
     if(!db)return showMsg($("r_msg"),"err","Sem conexão com a planilha. Verifique a internet e tente de novo.");
-    const doc={matricula:$("r_mat").value.trim(),nome:$("r_nome").value.trim().toUpperCase(),filial:$("r_filial").value,funcao:$("r_funcao").value,escala:$("r_escala").value,tipo:$("r_tipo").value,motivo:$("r_motivo").value,motivoOutro:$("r_motivo").value==="Outro"?$("r_outro").value.trim():"",entrada:$("r_entrada").value,previsaoSaida:$("r_saida").value||"",criadoPor:uid||"",criadoEm:new Date().toISOString()};
+    const doc={matricula:$("r_mat").value.trim(),nome:$("r_nome").value.trim().toUpperCase(),filial:$("r_filial").value,funcao:valorFuncao("r"),escala:$("r_escala").value,turno:$("r_turno").value,tipo:$("r_tipo").value,motivo:$("r_motivo").value,motivoOutro:$("r_motivo").value==="Outro"?$("r_outro").value.trim():"",entrada:$("r_entrada").value,previsaoSaida:$("r_saida").value||"",criadoPor:uid||"",criadoEm:new Date().toISOString()};
     $("r_submit").disabled=true;
     try{await apiPost({action:"addReserva",data:doc});$("formReserva").reset();showMsg($("r_msg"),"ok",`Entrada de ${doc.nome} registrada.`)}
     catch(err){showMsg($("r_msg"),"err",errText(err))}
@@ -417,15 +437,15 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
   function preencherPorMatricula(){
     const m=$("m_mat").value.trim();
     const r=ultimaReserva(m,true)||ultimaReserva(m,false);
-    if(r){$("m_nome").value=r.nome;$("c_filial").value=r.filial;$("c_funcao").value=r.funcao;$("c_escala").value=r.escala;$("m_found").textContent=`Na reserva desde ${fmt(r.entrada)} · filial ${r.filial}`}
+    if(r){$("m_nome").value=r.nome;$("c_filial").value=r.filial;setFuncao("c",r.funcao);$("c_escala").value=r.escala;if(r.turno)$("c_turno").value=r.turno;$("m_found").textContent=`Na reserva desde ${fmt(r.entrada)} · filial ${r.filial}`}
     else $("m_found").textContent=m?"Matrícula não encontrada na reserva. Preencha os dados manualmente.":"";
     excluidos.clear();atualizarDias();
   }
   $("m_mat").addEventListener("change",preencherPorMatricula);
   $("m_mat").addEventListener("blur",preencherPorMatricula);
   function limparMov(){
-    ["m_mat","m_nome","m_ate","c_filial","c_funcao","c_escala","c_turno","c_local","c_mat2","c_nome2","n_motivo","o_motivo"].forEach(id=>{$(id).value="";$(id).removeAttribute("aria-invalid")});
-    $("m_data").value=today();$("m_found").textContent="";excluidos.clear();atualizarDias();
+    ["m_mat","m_nome","m_ate","c_filial","c_funcao","c_funcaoOutra","c_escala","c_turno","c_local","c_mat2","c_nome2","n_motivo","o_motivo"].forEach(id=>{$(id).value="";$(id).removeAttribute("aria-invalid")});
+    $("m_data").value=today();$("m_found").textContent="";$("c_funcaoOutraWrap").hidden=true;excluidos.clear();atualizarDias();
   }
   $("m_clear").addEventListener("click",limparMov);
   $("formMov").addEventListener("submit",async e=>{
@@ -433,6 +453,7 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
     const s=sitAtual();
     const req=COB(s)?["c_filial","c_funcao","c_escala","c_turno","c_local","c_mat2","c_nome2"]:({nao_utilizado:["n_motivo"],ocorrencia:["o_motivo"]}[s]||[]);
     let bad=false;["m_mat","m_nome","m_data",...req].forEach(id=>{if(mark($(id),!$(id).value.trim()))bad=true});
+    if(COB(s)&&$("c_funcao").value==="OUTRA"&&mark($("c_funcaoOutra"),!$("c_funcaoOutra").value.trim()))bad=true;
     if(bad)return showMsg($("m_msg"),"err","Preencha os campos obrigatórios destacados.");
     if(!db)return showMsg($("m_msg"),"err","Sem conexão com a planilha. Verifique a internet e tente de novo.");
     const mat=$("m_mat").value.trim();
@@ -446,7 +467,7 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
     const r=ultimaReserva(mat,true)||ultimaReserva(mat,false),hoje=today(),agora=new Date().toISOString();
     const regs=dias.map(iso=>{
       const b={situacao:(s==="cobertura"&&iso>hoje)?"programado":s,matricula:mat,nome:$("m_nome").value.trim().toUpperCase(),data:iso,criadoPor:uid||"",criadoEm:agora};
-      if(COB(s))Object.assign(b,{filial:$("c_filial").value,funcao:$("c_funcao").value,escala:$("c_escala").value,turno:$("c_turno").value,local:$("c_local").value.trim().toUpperCase(),matCoberto:$("c_mat2").value.trim(),nomeCoberto:$("c_nome2").value.trim().toUpperCase()});
+      if(COB(s))Object.assign(b,{filial:$("c_filial").value,funcao:valorFuncao("c"),escala:$("c_escala").value,turno:$("c_turno").value,local:$("c_local").value.trim().toUpperCase(),matCoberto:$("c_mat2").value.trim(),nomeCoberto:$("c_nome2").value.trim().toUpperCase()});
       else{b.filial=r?r.filial:"";b.funcao=r?r.funcao:"";b.escala=r?r.escala:"";b.motivo=s==="ocorrencia"?$("o_motivo").value:s==="nao_utilizado"?$("n_motivo").value.trim():""}
       return b;
     });
@@ -478,7 +499,7 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
   $("x_mat").addEventListener("change",localizarSaida);
   $("x_mat").addEventListener("blur",localizarSaida);
   function limparSaida(){
-    ["x_mat","x_nome","x_motivo","x_posto","x_filial","x_deslig","x_dias","x_regiao"].forEach(id=>{$(id).value="";$(id).removeAttribute("aria-invalid")});
+    ["x_mat","x_nome","x_motivo","x_posto","x_filial","x_deslig","x_dias","x_regiao","x_fFilial","x_fPosto","x_fMat","x_fNome"].forEach(id=>{$(id).value="";$(id).removeAttribute("aria-invalid")});
     $("x_data").value=today();$("x_found").textContent="";
     ["Fixo no posto","Desligado","Afastado","Substituto de férias"].forEach(m=>$("xb-"+m).hidden=true);
   }
@@ -486,7 +507,7 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
   $("formSaida").addEventListener("submit",async e=>{
     e.preventDefault();
     const mot=$("x_motivo").value;
-    const extra={"Fixo no posto":["x_posto","x_filial"],"Desligado":["x_deslig"],"Afastado":["x_dias"],"Substituto de férias":["x_regiao"]}[mot]||[];
+    const extra={"Fixo no posto":["x_posto","x_filial"],"Desligado":["x_deslig"],"Afastado":["x_dias"],"Substituto de férias":["x_regiao","x_fFilial","x_fPosto","x_fMat","x_fNome"]}[mot]||[];
     let bad=false;["x_mat","x_data","x_motivo",...extra].forEach(id=>{if(mark($(id),!$(id).value.trim()))bad=true});
     if(mot==="Afastado"&&!(parseInt($("x_dias").value,10)>0)){mark($("x_dias"),true);bad=true}
     if(bad)return showMsg($("x_msg"),"err","Preencha os campos obrigatórios destacados.");
@@ -500,6 +521,10 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
       dataDesligamento:mot==="Desligado"?$("x_deslig").value:"",
       diasAfastamento:mot==="Afastado"?parseInt($("x_dias").value,10):"",
       regiaoFerias:mot==="Substituto de férias"?$("x_regiao").value:"",
+      feriasFilial:mot==="Substituto de férias"?$("x_fFilial").value:"",
+      feriasPosto:mot==="Substituto de férias"?$("x_fPosto").value.trim().toUpperCase():"",
+      feriasMatCoberto:mot==="Substituto de férias"?$("x_fMat").value.trim():"",
+      feriasNomeCoberto:mot==="Substituto de férias"?$("x_fNome").value.trim().toUpperCase():"",
       saidaRegistradaPor:uid||"",saidaRegistradaEm:new Date().toISOString()};
     $("x_submit").disabled=true;
     try{await apiPost({action:"saida",id:r._id,data:upd});limparSaida();showMsg($("x_msg"),"ok",`Saída de ${r.nome} registrada (${mot}).`)}
@@ -511,7 +536,7 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
     if(x.motivoSaida==="Fixo no posto")return `${x.postoFixo} · ${x.filialFixo}`;
     if(x.motivoSaida==="Desligado")return x.dataDesligamento?`em ${fmt(x.dataDesligamento)}`:"";
     if(x.motivoSaida==="Afastado")return `${x.diasAfastamento} dias`;
-    if(x.motivoSaida==="Substituto de férias")return x.regiaoFerias;
+    if(x.motivoSaida==="Substituto de férias")return [x.regiaoFerias,x.feriasPosto&&(x.feriasPosto+(x.feriasFilial?" ("+x.feriasFilial+")":"")),x.feriasMatCoberto&&("cobre "+x.feriasMatCoberto+" "+(x.feriasNomeCoberto||""))].filter(Boolean).join(" · ");
     return "";
   }
 
@@ -550,7 +575,7 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
       const venc=atv.filter(x=>x.previsaoSaida&&x.previsaoSaida<hoje).length;
       $("counts").innerHTML=`<span class="chip">${atv.length} na reserva</span><span class="chip gray">${atv.filter(x=>x.tipo==="Transitória").length} transitória</span><span class="chip gray">${atv.filter(x=>x.tipo==="Permanente").length} permanente</span>${rows.length-atv.length?`<span class="chip gray">${rows.length-atv.length} já saíram</span>`:""}${venc?`<span class="chip red">${venc} com previsão de saída vencida</span>`:""}`;
       thead.innerHTML="<tr><th>Matrícula</th><th>Nome</th><th>Filial</th><th>Função</th><th>Escala</th><th>Tipo</th><th>Motivo da entrada</th><th>Entrada</th><th>Prev. saída</th><th>Saída efetiva</th><th></th></tr>";
-      tbody.innerHTML=rows.length?rows.map(x=>`<tr><td class="mono">${esc(x.matricula)}</td><td>${esc(x.nome)}</td><td class="mono" title="${esc(FILIAIS[x.filial]||"")}">${esc(x.filial)}</td><td>${esc(x.funcao)}</td><td class="mono">${esc(x.escala)}</td><td>${esc(x.tipo)}</td><td>${esc(x.motivo)}${x.motivoOutro?`: ${esc(x.motivoOutro)}`:""}</td><td class="mono">${fmt(x.entrada)}</td><td class="mono">${x.previsaoSaida?`<span class="${!x.saidaEfetiva&&x.previsaoSaida<hoje?"chip red":""}">${fmt(x.previsaoSaida)}</span>`:"—"}</td><td>${x.saidaEfetiva?`<span class="mono">${fmt(x.saidaEfetiva)}</span><br><span class="hint">${esc(x.motivoSaida)}${detalheSaida(x)?" · "+esc(detalheSaida(x)):""}</span>`:"—"}</td><td>${podeExcluir(x)?`<button class="btn danger small" data-del="reservas/${esc(x._id)}">Excluir</button>`:""}</td></tr>`).join("")
+      tbody.innerHTML=rows.length?rows.map(x=>`<tr><td class="mono">${esc(x.matricula)}</td><td>${esc(x.nome)}</td><td class="mono" title="${esc(FILIAIS[x.filial]||"")}">${esc(x.filial)}</td><td>${esc(x.funcao)}</td><td class="mono">${esc(x.escala)}${x.turno?`<br><span class="hint">${esc(x.turno)}</span>`:""}</td><td>${esc(x.tipo)}</td><td>${esc(x.motivo)}${x.motivoOutro?`: ${esc(x.motivoOutro)}`:""}</td><td class="mono">${fmt(x.entrada)}</td><td class="mono">${x.previsaoSaida?`<span class="${!x.saidaEfetiva&&x.previsaoSaida<hoje?"chip red":""}">${fmt(x.previsaoSaida)}</span>`:"—"}</td><td>${x.saidaEfetiva?`<span class="mono">${fmt(x.saidaEfetiva)}</span><br><span class="hint">${esc(x.motivoSaida)}${detalheSaida(x)?" · "+esc(detalheSaida(x)):""}</span>`:"—"}</td><td>${podeExcluir(x)?`<button class="btn danger small" data-del="reservas/${esc(x._id)}">Excluir</button>`:""}</td></tr>`).join("")
         :`<tr><td colspan="11" class="empty">${db?"Nenhum colaborador com esses filtros. Os registros feitos na aba Entrada na reserva aparecem aqui.":"Carregando registros…"}</td></tr>`;
     }else{
       const rows=filtrar(movs,"data").sort((a,b)=>(b.data||"").localeCompare(a.data||"")||(b.criadoEm||"").localeCompare(a.criadoEm||""));
@@ -612,7 +637,7 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
   const MESES=["JANEIRO","FEVEREIRO","MARÇO","ABRIL","MAIO","JUNHO","JULHO","AGOSTO","SETEMBRO","OUTUBRO","NOVEMBRO","DEZEMBRO"];
   const xmlEsc=v=>String(v).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
   const serial=s=>{const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(s||"");return m?(Date.UTC(+m[1],+m[2]-1,+m[3])-Date.UTC(1899,11,30))/864e5:null};
-  const tituloCaso=s=>{s=String(s||"").toLowerCase();return s?s.charAt(0).toUpperCase()+s.slice(1):""};
+  const tituloCaso=s=>{s=String(s||"").trim();if(!s)return "";if(s.toUpperCase()==="ASG")return "ASG";s=s.toLowerCase();return s.charAt(0).toUpperCase()+s.slice(1)};
   function linhasControle(){
     const usadas=new Set(),out=[];
     const daMat=m=>reservas.filter(r=>r.matricula===m).sort((a,b)=>(b.entrada||"").localeCompare(a.entrada||""));
