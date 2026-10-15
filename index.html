@@ -89,6 +89,12 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
 .subtabs button{font:600 13.5px var(--f-display);border:1px solid var(--line);background:var(--bg);color:var(--fg);padding:8px 14px;border-radius:999px;cursor:pointer}
 .subtabs button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
 .status{font-size:13px;color:var(--muted)}
+.dias{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.dia{font:500 13px var(--f-mono);padding:6px 9px;border-radius:6px;border:1px solid var(--accent);background:var(--accent-soft);color:var(--fg);cursor:pointer}
+.dia[aria-pressed="false"]{background:transparent;border-color:var(--line);color:var(--muted);text-decoration:line-through}
+.dia.fut{border-style:dashed}
+.dia:disabled{cursor:not-allowed;opacity:.55}
+.dia:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 @media (prefers-reduced-motion:no-preference){.btn,.seg label{transition:background .15s,border-color .15s}}
 </style>
 <script>
@@ -155,20 +161,24 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
     <form id="formMov" novalidate>
       <div class="seg" role="radiogroup" aria-label="Situação do dia">
         <label><input type="radio" name="situacao" id="s_cob" value="cobertura" checked> Em cobertura</label>
+        <label><input type="radio" name="situacao" id="s_prog" value="programado"> Programado</label>
+        <label><input type="radio" name="situacao" id="s_disp" value="disponivel"> Disponível</label>
         <label><input type="radio" name="situacao" id="s_nu" value="nao_utilizado"> Não utilizado</label>
+        <label><input type="radio" name="situacao" id="s_folga" value="folga"> Folga</label>
         <label><input type="radio" name="situacao" id="s_oc" value="ocorrencia"> Ocorrência</label>
       </div>
 
       <div class="grid">
         <label class="f"><span>Matrícula <em>*</em></span><input id="m_mat" list="listaReserva" inputmode="numeric" autocomplete="off" required></label>
         <label class="f"><span>Nome do colaborador (na reserva) <em>*</em></span><input id="m_nome" autocomplete="off" required></label>
-        <label class="f"><span>Data <em>*</em></span><input id="m_data" type="date" required></label>
-        <div class="hint" id="m_found" style="align-self:end"></div>
+        <label class="f"><span><span id="m_dataLbl">Data (início)</span> <em>*</em></span><input id="m_data" type="date" required></label>
+        <label class="f" id="m_ateWrap"><span>Até (opcional, para um período)</span><input id="m_ate" type="date"></label>
+        <div class="hint full" id="m_found"></div>
       </div>
       <datalist id="listaReserva"></datalist>
 
       <div class="sub" id="blk-cobertura">
-        <h3>Em cobertura</h3>
+        <h3 id="c_titulo">Em cobertura</h3>
         <div class="grid">
           <label class="f"><span>Filial <em>*</em></span>
             <select id="c_filial"><option value="">Selecione</option><option>0101</option><option>0102</option><option>0103</option><option>0501</option></select></label>
@@ -176,9 +186,15 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
             <select id="c_funcao"><option value="">Selecione</option><option>VIGILANTE</option><option>SUPERVISOR DE VIGILANTE</option></select></label>
           <label class="f"><span>Escala <em>*</em></span>
             <select id="c_escala"><option value="">Selecione</option><option>12X36</option><option>5X2</option><option>6X1</option><option>5X1</option></select></label>
-          <label class="f"><span>Local de cobertura (posto de serviço) <em>*</em></span><input id="c_local" autocomplete="off"></label>
+          <label class="f"><span>Turno <em>*</em></span>
+            <select id="c_turno"><option value="">Selecione</option><option>DIURNO</option><option>NOTURNO</option></select></label>
+          <label class="f full"><span>Local de cobertura (posto de serviço) <em>*</em></span><input id="c_local" autocomplete="off"></label>
           <label class="f"><span>Matrícula (colaborador coberto) <em>*</em></span><input id="c_mat2" inputmode="numeric" autocomplete="off"></label>
           <label class="f"><span>Nome (colaborador coberto) <em>*</em></span><input id="c_nome2" autocomplete="off"></label>
+          <div class="full" id="m_diasWrap">
+            <span class="hint" id="m_diasInfo"></span>
+            <div class="dias" id="m_dias"></div>
+          </div>
         </div>
       </div>
 
@@ -267,7 +283,7 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
       <label class="f"><span>Buscar</span><input id="q" placeholder="Matrícula, nome ou posto" autocomplete="off"></label>
       <label class="f"><span>Filial</span><select id="fFilial"><option value="">Todas</option><option>0101</option><option>0102</option><option>0103</option><option>0501</option></select></label>
       <label class="f" id="fStatusWrap"><span>Status</span><select id="fStatus"><option value="ativo">Na reserva</option><option value="saiu">Já saíram</option><option value="">Todos</option></select></label>
-      <label class="f" id="fSitWrap" hidden><span>Situação</span><select id="fSit"><option value="">Todas</option><option value="cobertura">Em cobertura</option><option value="nao_utilizado">Não utilizado</option><option value="ocorrencia">Ocorrência</option></select></label>
+      <label class="f" id="fSitWrap" hidden><span>Situação</span><select id="fSit"><option value="">Todas</option><option value="cobertura">Em cobertura</option><option value="programado">Programado</option><option value="disponivel">Disponível</option><option value="nao_utilizado">Não utilizado</option><option value="folga">Folga</option><option value="ocorrencia">Ocorrência</option></select></label>
       <label class="f"><span>De</span><input id="fDe" type="date"></label>
       <label class="f"><span>Até</span><input id="fAte" type="date"></label>
       <button class="btn ghost" type="button" id="btnXlsx">Baixar planilha Excel</button>
@@ -286,14 +302,22 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
 (function(){
   const API_URL=window.API_URL||"";
   const $=id=>document.getElementById(id);
-  async function apiPost(body){
+  async function apiPost(body,atualizar=true){
     const r=await fetch(API_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(body)});
     const j=await r.json();
     if(!j.ok)throw new Error(j.error||"A planilha recusou o registro.");
-    await refresh();return j;
+    if(atualizar)await refresh();return j;
+  }
+  async function apiPostMovs(regs){
+    try{await apiPost({action:"addMovs",data:regs})}
+    catch(e){
+      if(!/Ação desconhecida/.test((e&&e.message)||""))throw e;
+      for(const r of regs)await apiPost({action:"addMov",data:r},false);
+      await refresh();
+    }
   }
   const FILIAIS={"0101":"SERVNAC SEGURANÇA","0102":"SERVNAC SEGURANÇA RN","0103":"SERVNAC SEGURANÇA SP","0501":"VERDE SEGURANÇA"};
-  const SIT={cobertura:"Em cobertura",nao_utilizado:"Não utilizado",ocorrencia:"Ocorrência"};
+  const SIT={cobertura:"Em cobertura",programado:"Programado",disponivel:"Disponível",nao_utilizado:"Não utilizado",folga:"Folga",ocorrencia:"Ocorrência"};
   let db=null,user=null,uid=null,downloads=null,canAdmin=false,readOnly=false;
   let reservas=[],movs=[],sub="res";
 
@@ -339,9 +363,52 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
   /* SITUAÇÃO DO DIA */
   $("m_data").value=today();
   const sitAtual=()=>document.querySelector('input[name="situacao"]:checked').value;
-  document.querySelectorAll('input[name="situacao"]').forEach(r=>r.addEventListener("change",()=>{
-    ["cobertura","nao_utilizado","ocorrencia"].forEach(s=>$("blk-"+s).hidden=s!==sitAtual());
-  }));
+  const COB=s=>s==="cobertura"||s==="programado";
+  const excluidos=new Set();
+  const DSEM=["dom","seg","ter","qua","qui","sex","sáb"];
+  const isoDe=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+  /* dias do lançamento conforme a escala: 12x36 = mesma paridade do dia inicial; 5x2 = segunda a sexta; 6x1 e 5x1 = todos (o supervisor tira a folga) */
+  function diasDoLancamento(){
+    const s=sitAtual(),ini=$("m_data").value;
+    if(!ini)return [];
+    if(!COB(s))return [ini];
+    const fim=$("m_ate").value||ini,esc=$("c_escala").value;
+    if(fim<ini)return null;
+    const out=[],d=new Date(ini+"T12:00:00"),end=new Date(fim+"T12:00:00"),par=d.getDate()%2;
+    while(d<=end&&out.length<62){
+      const dow=d.getDay();
+      if(!(esc==="12X36"&&d.getDate()%2!==par)&&!(esc==="5X2"&&(dow===0||dow===6)))out.push(isoDe(d));
+      d.setDate(d.getDate()+1);
+    }
+    return out;
+  }
+  const jaLancado=(mat,iso)=>movs.some(x=>x.matricula===mat&&x.data===iso);
+  function atualizarDias(){
+    const s=sitAtual();
+    $("m_diasWrap").hidden=!COB(s);
+    if(!COB(s))return;
+    const dias=diasDoLancamento(),mat=$("m_mat").value.trim(),hoje=today(),esc=$("c_escala").value;
+    if(dias===null){$("m_diasInfo").textContent="A data final não pode ser antes da data inicial.";$("m_dias").innerHTML="";return}
+    if(!dias.length){$("m_diasInfo").textContent=!$("m_data").value?"Escolha a data para ver os dias que serão lançados.":esc==="5X2"?"Na escala 5x2 só há lançamento de segunda a sexta. Escolha outra data.":"Nenhum dia no período.";$("m_dias").innerHTML="";return}
+    let n=0,fut=0;
+    $("m_dias").innerHTML=dias.map(iso=>{
+      const dup=!!mat&&jaLancado(mat,iso),on=!dup&&!excluidos.has(iso),f=s==="cobertura"&&iso>hoje;
+      if(on){n++;if(f)fut++}
+      return `<button type="button" class="dia${f?" fut":""}" data-iso="${iso}" aria-pressed="${on}"${dup?' disabled title="Já existe lançamento nesse dia"':""}>${DSEM[new Date(iso+"T12:00:00").getDay()]} ${fmt(iso).slice(0,5)}</button>`;
+    }).join("");
+    const regra=esc==="12X36"?` Escala 12x36: dias ${new Date($("m_data").value+"T12:00:00").getDate()%2?"ímpares":"pares"}.`:esc==="5X2"?" Escala 5x2: segunda a sexta.":esc?" Toque nos dias de folga para tirar.":"";
+    $("m_diasInfo").textContent=`${n} ${n===1?"dia será lançado":"dias serão lançados"}.${regra}`+(fut?` ${fut===1?"1 dia é futuro e vai":fut+" dias são futuros e vão"} como Programado.`:"");
+  }
+  $("m_dias").addEventListener("click",e=>{const b=e.target.closest(".dia");if(!b||b.disabled)return;const iso=b.dataset.iso;excluidos.has(iso)?excluidos.delete(iso):excluidos.add(iso);atualizarDias()});
+  ["m_data","m_ate","c_escala"].forEach(id=>$(id).addEventListener("change",()=>{excluidos.clear();atualizarDias()}));
+  function trocarSituacao(){
+    const s=sitAtual();
+    $("blk-cobertura").hidden=!COB(s);$("blk-nao_utilizado").hidden=s!=="nao_utilizado";$("blk-ocorrencia").hidden=s!=="ocorrencia";
+    $("m_ateWrap").hidden=!COB(s);$("m_dataLbl").textContent=COB(s)?"Data (início)":"Data";
+    $("c_titulo").textContent=s==="programado"?"Programado":"Em cobertura";
+    excluidos.clear();atualizarDias();
+  }
+  document.querySelectorAll('input[name="situacao"]').forEach(r=>r.addEventListener("change",trocarSituacao));
   const ativas=()=>reservas.filter(r=>!r.saidaEfetiva);
   const ultimaReserva=(m,soAtiva)=>(soAtiva?ativas():reservas).filter(x=>x.matricula===m).sort((a,b)=>(b.entrada||"").localeCompare(a.entrada||""))[0];
   function preencherPorMatricula(){
@@ -349,30 +416,48 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
     const r=ultimaReserva(m,true)||ultimaReserva(m,false);
     if(r){$("m_nome").value=r.nome;$("c_filial").value=r.filial;$("c_funcao").value=r.funcao;$("c_escala").value=r.escala;$("m_found").textContent=`Na reserva desde ${fmt(r.entrada)} · filial ${r.filial}`}
     else $("m_found").textContent=m?"Matrícula não encontrada na reserva. Preencha os dados manualmente.":"";
+    excluidos.clear();atualizarDias();
   }
   $("m_mat").addEventListener("change",preencherPorMatricula);
   $("m_mat").addEventListener("blur",preencherPorMatricula);
   function limparMov(){
-    ["m_mat","m_nome","c_filial","c_funcao","c_escala","c_local","c_mat2","c_nome2","n_motivo","o_motivo"].forEach(id=>{$(id).value="";$(id).removeAttribute("aria-invalid")});
-    $("m_data").value=today();$("m_found").textContent="";
+    ["m_mat","m_nome","m_ate","c_filial","c_funcao","c_escala","c_turno","c_local","c_mat2","c_nome2","n_motivo","o_motivo"].forEach(id=>{$(id).value="";$(id).removeAttribute("aria-invalid")});
+    $("m_data").value=today();$("m_found").textContent="";excluidos.clear();atualizarDias();
   }
   $("m_clear").addEventListener("click",limparMov);
   $("formMov").addEventListener("submit",async e=>{
     e.preventDefault();
     const s=sitAtual();
-    const req={cobertura:["c_filial","c_funcao","c_escala","c_local","c_mat2","c_nome2"],nao_utilizado:["n_motivo"],ocorrencia:["o_motivo"]}[s];
+    const req=COB(s)?["c_filial","c_funcao","c_escala","c_turno","c_local","c_mat2","c_nome2"]:({nao_utilizado:["n_motivo"],ocorrencia:["o_motivo"]}[s]||[]);
     let bad=false;["m_mat","m_nome","m_data",...req].forEach(id=>{if(mark($(id),!$(id).value.trim()))bad=true});
     if(bad)return showMsg($("m_msg"),"err","Preencha os campos obrigatórios destacados.");
     if(!db)return showMsg($("m_msg"),"err","Sem conexão com a planilha. Verifique a internet e tente de novo.");
-    const base={situacao:s,matricula:$("m_mat").value.trim(),nome:$("m_nome").value.trim().toUpperCase(),data:$("m_data").value,criadoPor:uid||"",criadoEm:new Date().toISOString()};
-    const r=reservas.find(x=>x.matricula===base.matricula);
-    if(s==="cobertura")Object.assign(base,{filial:$("c_filial").value,funcao:$("c_funcao").value,escala:$("c_escala").value,local:$("c_local").value.trim().toUpperCase(),matCoberto:$("c_mat2").value.trim(),nomeCoberto:$("c_nome2").value.trim().toUpperCase()});
-    else{base.filial=r?r.filial:"";base.motivo=s==="ocorrencia"?$("o_motivo").value:$("n_motivo").value.trim()}
+    const mat=$("m_mat").value.trim();
+    let dias=diasDoLancamento();
+    if(dias===null){mark($("m_ate"),true);return showMsg($("m_msg"),"err","A data final não pode ser antes da data inicial.")}
+    mark($("m_ate"),false);
+    dias=dias.filter(iso=>!excluidos.has(iso));
+    if(!COB(s)&&dias.length&&jaLancado(mat,dias[0]))return showMsg($("m_msg"),"err",`Já existe lançamento dessa matrícula em ${fmt(dias[0])}. Para corrigir, exclua o anterior em Registros.`);
+    dias=dias.filter(iso=>!jaLancado(mat,iso));
+    if(!dias.length)return showMsg($("m_msg"),"err",COB(s)&&$("c_escala").value==="5X2"&&!diasDoLancamento().length?"Na escala 5x2 só há lançamento de segunda a sexta.":"Nenhum dia selecionado para lançar.");
+    const r=ultimaReserva(mat,true)||ultimaReserva(mat,false),hoje=today(),agora=new Date().toISOString();
+    const regs=dias.map(iso=>{
+      const b={situacao:(s==="cobertura"&&iso>hoje)?"programado":s,matricula:mat,nome:$("m_nome").value.trim().toUpperCase(),data:iso,criadoPor:uid||"",criadoEm:agora};
+      if(COB(s))Object.assign(b,{filial:$("c_filial").value,funcao:$("c_funcao").value,escala:$("c_escala").value,turno:$("c_turno").value,local:$("c_local").value.trim().toUpperCase(),matCoberto:$("c_mat2").value.trim(),nomeCoberto:$("c_nome2").value.trim().toUpperCase()});
+      else{b.filial=r?r.filial:"";b.funcao=r?r.funcao:"";b.escala=r?r.escala:"";b.motivo=s==="ocorrencia"?$("o_motivo").value:s==="nao_utilizado"?$("n_motivo").value.trim():""}
+      return b;
+    });
     $("m_submit").disabled=true;
-    try{await apiPost({action:"addMov",data:base});const nome=base.nome;limparMov();showMsg($("m_msg"),"ok",`${SIT[s]} de ${nome} registrada.`)}
+    try{
+      await apiPostMovs(regs);
+      const nome=regs[0].nome;limparMov();
+      showMsg($("m_msg"),"ok",regs.length>1?`${regs.length} dias lançados para ${nome}.`:`${SIT[regs[0].situacao]} de ${nome} registrado.`);
+    }
     catch(err){showMsg($("m_msg"),"err",errText(err))}
     finally{$("m_submit").disabled=readOnly}
   });
+
+  trocarSituacao();
 
   /* SAÍDA DA RESERVA */
   $("x_data").value=today();
@@ -467,9 +552,10 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
     }else{
       const rows=filtrar(movs,"data").sort((a,b)=>(b.data||"").localeCompare(a.data||"")||(b.criadoEm||"").localeCompare(a.criadoEm||""));
       const n=s=>rows.filter(x=>x.situacao===s).length;
-      $("counts").innerHTML=`<span class="chip">${n("cobertura")} em cobertura</span><span class="chip gray">${n("nao_utilizado")} não utilizado</span><span class="chip warn">${n("ocorrencia")} ocorrência</span>`;
+      const cls={cobertura:"",programado:"",ocorrencia:"warn"};
+      $("counts").innerHTML=Object.keys(SIT).filter(k=>n(k)||k==="cobertura").map(k=>`<span class="chip ${cls[k]??"gray"}">${n(k)} ${SIT[k].toLowerCase()}</span>`).join("");
       thead.innerHTML="<tr><th>Data</th><th>Situação</th><th>Matrícula</th><th>Nome (reserva)</th><th>Filial</th><th>Função / Escala</th><th>Posto de cobertura</th><th>Colaborador coberto</th><th>Motivo</th><th></th></tr>";
-      tbody.innerHTML=rows.length?rows.map(x=>`<tr><td class="mono">${fmt(x.data)}</td><td><span class="chip ${x.situacao==="cobertura"?"":x.situacao==="ocorrencia"?"warn":"gray"}">${SIT[x.situacao]||esc(x.situacao)}</span></td><td class="mono">${esc(x.matricula)}</td><td>${esc(x.nome)}</td><td class="mono">${esc(x.filial||"—")}</td><td>${x.funcao?`${esc(x.funcao)} · ${esc(x.escala)}`:"—"}</td><td>${esc(x.local||"—")}</td><td>${x.matCoberto?`<span class="mono">${esc(x.matCoberto)}</span> ${esc(x.nomeCoberto)}`:"—"}</td><td>${esc(x.motivo||"—")}</td><td>${podeExcluir(x)?`<button class="btn danger small" data-del="movimentacoes/${esc(x._id)}">Excluir</button>`:""}</td></tr>`).join("")
+      tbody.innerHTML=rows.length?rows.map(x=>`<tr><td class="mono">${fmt(x.data)}</td><td><span class="chip ${COB(x.situacao)?"":x.situacao==="ocorrencia"?"warn":"gray"}">${SIT[x.situacao]||esc(x.situacao)}</span></td><td class="mono">${esc(x.matricula)}</td><td>${esc(x.nome)}</td><td class="mono">${esc(x.filial||"—")}</td><td>${x.funcao?`${esc(x.funcao)} · ${esc(x.escala)}`:"—"}</td><td>${esc(x.local||"—")}${x.turno?`<br><span class="hint">${esc(x.turno)}</span>`:""}</td><td>${x.matCoberto?`<span class="mono">${esc(x.matCoberto)}</span> ${esc(x.nomeCoberto)}`:"—"}</td><td>${esc(x.motivo||"—")}</td><td>${podeExcluir(x)?`<button class="btn danger small" data-del="movimentacoes/${esc(x._id)}">Excluir</button>`:""}</td></tr>`).join("")
         :`<tr><td colspan="10" class="empty">${db?"Nenhuma situação registrada com esses filtros. Os lançamentos da aba Situação do dia aparecem aqui.":"Carregando registros…"}</td></tr>`;
     }
   }

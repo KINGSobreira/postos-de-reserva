@@ -17,14 +17,15 @@ const RES_COLS = ["id", "matricula", "nome", "filial", "funcao", "escala", "tipo
   "entrada", "previsaoSaida", "saidaEfetiva", "motivoSaida", "postoFixo", "filialFixo", "dataDesligamento",
   "diasAfastamento", "regiaoFerias", "criadoEm", "saidaRegistradaEm"];
 const MOV_COLS = ["id", "situacao", "data", "matricula", "nome", "filial", "funcao", "escala", "local",
-  "matCoberto", "nomeCoberto", "motivo", "criadoEm"];
+  "matCoberto", "nomeCoberto", "motivo", "criadoEm", "turno"];
 const SAIDA_CAMPOS = ["saidaEfetiva", "motivoSaida", "postoFixo", "filialFixo", "dataDesligamento",
   "diasAfastamento", "regiaoFerias", "saidaRegistradaEm"];
 
 const PLAN_COLS = ["Matrícula", "Nome do colaborador", "Filial", "Função", "Escala", "Tipo de reserva",
   "Motivo da entrada", "Entrada na reserva", "Previsão de saída", "Saída efetiva", "Data do Registro",
   "Situação do dia", "Local da cobertura", "Matrícula do titular"];
-const SIT = { cobertura: "Em cobertura", nao_utilizado: "Não utilizado", ocorrencia: "Ocorrência" };
+const SIT = { cobertura: "Em cobertura", programado: "Programado", disponivel: "Disponível",
+  nao_utilizado: "Não utilizado", folga: "Folga", ocorrencia: "Ocorrência" };
 
 /** Rode esta função uma vez pelo editor para criar as abas. */
 function setup() {
@@ -53,6 +54,11 @@ function doPost(e) {
     } else if (body.action === "addMov") {
       exigir_(body.data, ["situacao", "matricula", "nome", "data"]);
       inserir_(ABA_MOV, MOV_COLS, Object.assign({}, body.data, { criadoEm: agora }));
+    } else if (body.action === "addMovs") {
+      const lista = Array.isArray(body.data) ? body.data : [];
+      if (!lista.length || lista.length > 62) throw new Error("Quantidade de dias inválida.");
+      lista.forEach(d => exigir_(d, ["situacao", "matricula", "nome", "data"]));
+      lista.forEach(d => inserir_(ABA_MOV, MOV_COLS, Object.assign({}, d, { criadoEm: agora })));
     } else if (body.action === "saida") {
       exigir_(body.data, ["saidaEfetiva", "motivoSaida"]);
       const dados = {};
@@ -134,6 +140,12 @@ function aba_(nome, cols) {
     sh.getRange(1, 1, 1, cols.length).setValues([cols]).setFontWeight("bold");
     sh.setFrozenRows(1);
     sh.getRange("A:Z").setNumberFormat("@"); // tudo como texto: preserva matrícula e datas
+  } else {
+    // acrescenta colunas novas (ex.: turno) em abas criadas por versões anteriores
+    const ultima = Math.max(sh.getLastColumn(), 1);
+    const head = sh.getRange(1, 1, 1, ultima).getDisplayValues()[0];
+    const faltam = cols.filter(c => head.indexOf(c) < 0);
+    if (faltam.length) sh.getRange(1, ultima + 1, 1, faltam.length).setValues([faltam]).setFontWeight("bold");
   }
   return sh;
 }
@@ -152,10 +164,11 @@ function ler_(nome, cols) {
 function inserir_(nome, cols, dados) {
   const sh = aba_(nome, cols);
   dados.id = Utilities.getUuid();
+  const head = sh.getRange(1, 1, 1, sh.getLastColumn()).getDisplayValues()[0];
   const linha = sh.getLastRow() + 1;
-  const rng = sh.getRange(linha, 1, 1, cols.length);
+  const rng = sh.getRange(linha, 1, 1, head.length);
   rng.setNumberFormat("@");
-  rng.setValues([cols.map(c => texto_(dados[c]))]);
+  rng.setValues([head.map(c => texto_(dados[c]))]);
 }
 
 function linhaDoId_(sh, id) {
@@ -168,8 +181,9 @@ function linhaDoId_(sh, id) {
 function atualizar_(nome, cols, id, dados) {
   const sh = aba_(nome, cols);
   const linha = linhaDoId_(sh, id);
+  const head = sh.getRange(1, 1, 1, sh.getLastColumn()).getDisplayValues()[0];
   Object.keys(dados).forEach(c => {
-    const col = cols.indexOf(c);
+    const col = head.indexOf(c);
     if (col >= 0) sh.getRange(linha, col + 1).setNumberFormat("@").setValue(texto_(dados[c]));
   });
 }
