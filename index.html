@@ -406,8 +406,9 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
     if(!ini)return [];
     if(!COB(s))return [ini];
     const fim=$("m_ate").value||ini,periodo=fim!==ini;
-    const escR=$("c_escala").value,escT=periodo?$("c_escalaCob").value:"";
-    const alterna=periodo&&(escR==="12X36"||escT==="12X36");
+    /* quem está na reserva passa a trabalhar na escala de quem está cobrindo */
+    const escT=periodo?$("c_escalaCob").value:"";
+    const alterna=escT==="12X36";
     if(fim<ini)return null;
     const out=[],d=new Date(ini+"T12:00:00"),end=new Date(fim+"T12:00:00"),par=d.getDate()%2;
     while(d<=end&&out.length<62){
@@ -418,16 +419,16 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
     return out;
   }
   const jaLancado=(mat,iso)=>movs.some(x=>x.matricula===mat&&x.data===iso);
-  /* 12x36 do colaborador da reserva: depois de um dia trabalhado vem um dia de folga.
-     Devolve o dia trabalhado vizinho que impede o lançamento, ou "" se estiver livre.
+  /* cobertura em escala 12x36: depois de um plantão 12x36 vem um dia de folga.
+     Devolve o plantão vizinho que impede o lançamento, ou "" se estiver livre.
      Virada de 31 para 01 é permitida (regra de dias ímpares). */
   function conflito12x36(mat,iso){
-    if(!mat||$("c_escala").value!=="12X36")return "";
+    if(!mat||$("c_escalaCob").value!=="12X36")return "";
     const d=new Date(iso+"T12:00:00");
     for(const k of [-1,1]){
       const v=new Date(d);v.setDate(v.getDate()+k);const vi=isoDe(v);
       const viradaImpar=d.getMonth()!==v.getMonth()&&d.getDate()%2===1&&v.getDate()%2===1;
-      if(!viradaImpar&&movs.some(x=>x.matricula===mat&&x.data===vi&&COB(x.situacao)))return vi;
+      if(!viradaImpar&&movs.some(x=>x.matricula===mat&&x.data===vi&&COB(x.situacao)&&x.escalaCoberto==="12X36"))return vi;
     }
     return "";
   }
@@ -436,7 +437,7 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
     $("m_diasWrap").hidden=!COB(s);
     if(!COB(s))return;
     const dias=diasDoLancamento(),mat=$("m_mat").value.trim(),hoje=today(),periodo=!!$("m_ate").value&&$("m_ate").value!==$("m_data").value;
-    const escR=$("c_escala").value,escT=periodo?$("c_escalaCob").value:"",esc=periodo&&(escR==="12X36"||escT==="12X36")?"12X36":escT;
+    const esc=periodo?$("c_escalaCob").value:"";
     if(dias===null){$("m_diasInfo").textContent="A data final não pode ser antes da data inicial.";$("m_dias").innerHTML="";return}
     if(!dias.length){$("m_diasInfo").textContent=!$("m_data").value?"Escolha a data para ver os dias que serão lançados.":"Nenhum dia no período.";$("m_dias").innerHTML="";return}
     let n=0,fut=0,bloq12=0;
@@ -450,7 +451,7 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
     $("m_diasInfo").textContent=`${n} ${n===1?"dia será lançado":"dias serão lançados"}.${regra}`+(fut?` ${fut===1?"1 dia é futuro e vai":fut+" dias são futuros e vão"} como Programado.`:"")+(bloq12?` ${bloq12===1?"1 dia bloqueado":bloq12+" dias bloqueados"} por ser folga da escala 12x36 (dia seguinte ou anterior a um plantão já lançado).`:"");
   }
   $("m_dias").addEventListener("click",e=>{const b=e.target.closest(".dia");if(!b||b.disabled)return;const iso=b.dataset.iso;excluidos.has(iso)?excluidos.delete(iso):excluidos.add(iso);atualizarDias()});
-  ["m_data","m_ate","c_escalaCob","c_escala"].forEach(id=>$(id).addEventListener("change",()=>{excluidos.clear();atualizarDias()}));
+  ["m_data","m_ate","c_escalaCob"].forEach(id=>$(id).addEventListener("change",()=>{excluidos.clear();atualizarDias()}));
   const fmtHora=(a,b)=>a&&b?`${a.replace(":","h")} às ${b.replace(":","h")}`:"";
   function sugerirHorario(){
     if($("c_hIni").value||$("c_hFim").value||$("c_escalaCob").value!=="12X36")return;
