@@ -195,6 +195,9 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
           <label class="f full"><span>Local de cobertura (posto de serviço) <em>*</em></span><input id="c_local" autocomplete="off"></label>
           <label class="f"><span>Matrícula (colaborador coberto) <em>*</em></span><input id="c_mat2" inputmode="numeric" autocomplete="off"></label>
           <label class="f"><span>Nome (colaborador coberto) <em>*</em></span><input id="c_nome2" autocomplete="off"></label>
+          <label class="f"><span>Motivo da cobertura <em>*</em></span>
+            <select id="c_motivo"><option value="">Selecione</option><option>Atestado médico</option><option>Afastamento</option><option>Falta não justificada</option><option>Férias</option><option>Licença casamento</option><option>Licença paternidade</option><option>Licença óbito</option><option>Folga TRE</option><option value="OUTRO">Outro motivo</option></select></label>
+          <label class="f" id="c_motivoOutroWrap" hidden><span>Qual motivo? <em>*</em></span><input id="c_motivoOutro" autocomplete="off"></label>
           <div class="full" id="m_diasWrap">
             <span class="hint" id="m_diasInfo"></span>
             <div class="dias" id="m_dias"></div>
@@ -355,6 +358,7 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
   /* função "Outra": mostra o campo de texto e devolve o valor final */
   const FUNCOES=["VIGILANTE","SUPERVISOR DE VIGILANTE","PORTEIRO","ASG"];
   [["r_funcao","r_funcaoOutraWrap"],["c_funcao","c_funcaoOutraWrap"]].forEach(([sel,wrap])=>$(sel).addEventListener("change",()=>{$(wrap).hidden=$(sel).value!=="OUTRA"}));
+  $("c_motivo").addEventListener("change",()=>{$("c_motivoOutroWrap").hidden=$("c_motivo").value!=="OUTRO"});
   const valorFuncao=p=>$(p+"_funcao").value==="OUTRA"?$(p+"_funcaoOutra").value.trim().toUpperCase():$(p+"_funcao").value;
   function setFuncao(p,v){
     if(!v){$(p+"_funcao").value="";$(p+"_funcaoOutraWrap").hidden=true;return}
@@ -444,16 +448,17 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
   $("m_mat").addEventListener("change",preencherPorMatricula);
   $("m_mat").addEventListener("blur",preencherPorMatricula);
   function limparMov(){
-    ["m_mat","m_nome","m_ate","c_filial","c_funcao","c_funcaoOutra","c_escala","c_turno","c_local","c_mat2","c_nome2","n_motivo","o_motivo"].forEach(id=>{$(id).value="";$(id).removeAttribute("aria-invalid")});
-    $("m_data").value=today();$("m_found").textContent="";$("c_funcaoOutraWrap").hidden=true;excluidos.clear();atualizarDias();
+    ["m_mat","m_nome","m_ate","c_filial","c_funcao","c_funcaoOutra","c_escala","c_turno","c_local","c_mat2","c_nome2","c_motivo","c_motivoOutro","n_motivo","o_motivo"].forEach(id=>{$(id).value="";$(id).removeAttribute("aria-invalid")});
+    $("m_data").value=today();$("m_found").textContent="";$("c_funcaoOutraWrap").hidden=true;$("c_motivoOutroWrap").hidden=true;excluidos.clear();atualizarDias();
   }
   $("m_clear").addEventListener("click",limparMov);
   $("formMov").addEventListener("submit",async e=>{
     e.preventDefault();
     const s=sitAtual();
-    const req=COB(s)?["c_filial","c_funcao","c_escala","c_turno","c_local","c_mat2","c_nome2"]:({nao_utilizado:["n_motivo"],ocorrencia:["o_motivo"]}[s]||[]);
+    const req=COB(s)?["c_filial","c_funcao","c_escala","c_turno","c_local","c_mat2","c_nome2","c_motivo"]:({nao_utilizado:["n_motivo"],ocorrencia:["o_motivo"]}[s]||[]);
     let bad=false;["m_mat","m_nome","m_data",...req].forEach(id=>{if(mark($(id),!$(id).value.trim()))bad=true});
     if(COB(s)&&$("c_funcao").value==="OUTRA"&&mark($("c_funcaoOutra"),!$("c_funcaoOutra").value.trim()))bad=true;
+    if(COB(s)&&$("c_motivo").value==="OUTRO"&&mark($("c_motivoOutro"),!$("c_motivoOutro").value.trim()))bad=true;
     if(bad)return showMsg($("m_msg"),"err","Preencha os campos obrigatórios destacados.");
     if(!db)return showMsg($("m_msg"),"err","Sem conexão com a planilha. Verifique a internet e tente de novo.");
     const mat=$("m_mat").value.trim();
@@ -467,7 +472,7 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
     const r=ultimaReserva(mat,true)||ultimaReserva(mat,false),hoje=today(),agora=new Date().toISOString();
     const regs=dias.map(iso=>{
       const b={situacao:(s==="cobertura"&&iso>hoje)?"programado":s,matricula:mat,nome:$("m_nome").value.trim().toUpperCase(),data:iso,criadoPor:uid||"",criadoEm:agora};
-      if(COB(s))Object.assign(b,{filial:$("c_filial").value,funcao:valorFuncao("c"),escala:$("c_escala").value,turno:$("c_turno").value,local:$("c_local").value.trim().toUpperCase(),matCoberto:$("c_mat2").value.trim(),nomeCoberto:$("c_nome2").value.trim().toUpperCase()});
+      if(COB(s))Object.assign(b,{filial:$("c_filial").value,funcao:valorFuncao("c"),escala:$("c_escala").value,turno:$("c_turno").value,local:$("c_local").value.trim().toUpperCase(),matCoberto:$("c_mat2").value.trim(),nomeCoberto:$("c_nome2").value.trim().toUpperCase(),motivo:$("c_motivo").value==="OUTRO"?$("c_motivoOutro").value.trim():$("c_motivo").value});
       else{b.filial=r?r.filial:"";b.funcao=r?r.funcao:"";b.escala=r?r.escala:"";b.motivo=s==="ocorrencia"?$("o_motivo").value:s==="nao_utilizado"?$("n_motivo").value.trim():""}
       return b;
     });
@@ -765,7 +770,9 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
       const mvRows=mv.slice().sort((a,b)=>(a.data||"").localeCompare(b.data||"")||String(a.matricula).localeCompare(String(b.matricula),"pt",{numeric:true})).map(x=>[
         fmt(x.data),SIT[x.situacao]||x.situacao,x.matricula,x.nome,x.filial||"",x.local?(x.local+(x.turno?" — "+x.turno:"")):"–",x.matCoberto?(x.matCoberto+" "+(x.nomeCoberto||"")):"–",x.motivo||"–"]);
       const corSit={"Em cobertura":[30,123,60],"Programado":[20,83,45],"Ocorrência":[148,97,0]};
-      tabela("Situações do dia",["Data","Situação","Matrícula","Colaborador (reserva)","Filial","Posto / turno","Titular coberto","Motivo"],mvRows,
+      const comMotivo=mv.some(x=>x.motivo);
+      if(!comMotivo)mvRows.forEach(r=>r.pop());
+      tabela("Situações do dia",["Data","Situação","Matrícula","Colaborador (reserva)","Filial","Posto / turno","Titular coberto"].concat(comMotivo?["Motivo"]:[]),mvRows,
         {0:{cellWidth:17,halign:"center"},1:{cellWidth:23},2:{cellWidth:18},4:{cellWidth:12,halign:"center"}},
         {didParseCell:d=>{if(d.section==="body"&&d.column.index===1&&corSit[d.cell.raw]){d.cell.styles.textColor=corSit[d.cell.raw];d.cell.styles.fontStyle="bold"}}});
       if(typeof doc.putTotalPages==="function")doc.putTotalPages("{total}");
