@@ -16,9 +16,9 @@ const ABA_PLAN = "Planilha";
 const RES_COLS = ["id", "matricula", "nome", "filial", "funcao", "escala", "tipo", "motivo", "motivoOutro",
   "entrada", "previsaoSaida", "saidaEfetiva", "motivoSaida", "postoFixo", "filialFixo", "dataDesligamento",
   "diasAfastamento", "regiaoFerias", "criadoEm", "saidaRegistradaEm", "turno",
-  "feriasFilial", "feriasPosto", "feriasMatCoberto", "feriasNomeCoberto"];
+  "feriasFilial", "feriasPosto", "feriasMatCoberto", "feriasNomeCoberto", "intrajornada"];
 const MOV_COLS = ["id", "situacao", "data", "matricula", "nome", "filial", "funcao", "escala", "local",
-  "matCoberto", "nomeCoberto", "motivo", "criadoEm", "turno"];
+  "matCoberto", "nomeCoberto", "motivo", "criadoEm", "turno", "escalaCoberto", "horario"];
 const SAIDA_CAMPOS = ["saidaEfetiva", "motivoSaida", "postoFixo", "filialFixo", "dataDesligamento",
   "diasAfastamento", "regiaoFerias", "saidaRegistradaEm",
   "feriasFilial", "feriasPosto", "feriasMatCoberto", "feriasNomeCoberto"];
