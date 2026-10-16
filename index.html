@@ -149,8 +149,6 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
         <label class="f"><span>Previsão de saída</span><input id="r_saida" name="previsaoSaida" type="date" aria-describedby="r_saidaHint"><span class="hint" id="r_saidaHint">Opcional. Se ainda não houver previsão, deixe em branco e registre normalmente.</span></label>
         <label class="f"><span>Turno <em>*</em></span>
           <select id="r_turno" name="turno" required><option value="">Selecione</option><option>DIURNO</option><option>NOTURNO</option></select></label>
-        <label class="f"><span>Intrajornada <em>*</em></span>
-          <select id="r_intra" name="intrajornada" required><option value="">Selecione</option><option>SIM</option><option>NÃO</option></select></label>
       </div>
       <div class="actions">
         <button class="btn primary" type="submit" id="r_submit">Registrar entrada</button>
@@ -200,6 +198,11 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
           <label class="f"><span>Turno <em>*</em></span>
             <select id="c_turno"><option value="">Selecione</option><option>DIURNO</option><option>NOTURNO</option></select></label>
           <label class="f full"><span>Local de cobertura (posto de serviço) <em>*</em></span><input id="c_local" autocomplete="off"></label>
+          <div class="f full"><span style="font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)">Intrajornada no posto <em style="font-style:normal;color:var(--danger)">*</em></span>
+            <div class="seg" id="c_intraGrp" role="radiogroup" aria-label="Intrajornada" style="margin:0">
+              <label><input type="radio" name="c_intra" id="c_intraSim" value="SIM"> Sim</label>
+              <label><input type="radio" name="c_intra" id="c_intraNao" value="NÃO"> Não</label>
+            </div></div>
           <label class="f"><span>Matrícula (colaborador coberto) <em>*</em></span><input id="c_mat2" inputmode="numeric" autocomplete="off"></label>
           <label class="f"><span>Nome (colaborador coberto) <em>*</em></span><input id="c_nome2" autocomplete="off"></label>
           <label class="f"><span>Escala do colaborador coberto <em>*</em></span>
@@ -380,7 +383,7 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
   $("formReserva").addEventListener("reset",()=>setTimeout(()=>{$("r_outroWrap").hidden=true;$("r_funcaoOutraWrap").hidden=true;$("r_entrada").value=today();document.querySelectorAll("#formReserva [aria-invalid]").forEach(e=>e.removeAttribute("aria-invalid"))}));
   $("formReserva").addEventListener("submit",async e=>{
     e.preventDefault();
-    const req=["r_mat","r_nome","r_filial","r_funcao","r_escala","r_turno","r_intra","r_tipo","r_motivo","r_entrada"];
+    const req=["r_mat","r_nome","r_filial","r_funcao","r_escala","r_turno","r_tipo","r_motivo","r_entrada"];
     let bad=false;req.forEach(id=>{if(mark($(id),!$(id).value.trim()))bad=true});
     if($("r_funcao").value==="OUTRA"&&mark($("r_funcaoOutra"),!$("r_funcaoOutra").value.trim()))bad=true;
     if($("r_motivo").value==="Outro"&&mark($("r_outro"),!$("r_outro").value.trim()))bad=true;
@@ -388,7 +391,7 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
     if($("r_saida").value&&$("r_saida").value<$("r_entrada").value){mark($("r_saida"),true);return showMsg($("r_msg"),"err","A previsão de saída não pode ser antes da entrada.")}
     mark($("r_saida"),false);
     if(!db)return showMsg($("r_msg"),"err","Sem conexão com a planilha. Verifique a internet e tente de novo.");
-    const doc={matricula:$("r_mat").value.trim(),nome:$("r_nome").value.trim().toUpperCase(),filial:$("r_filial").value,funcao:valorFuncao("r"),escala:$("r_escala").value,turno:$("r_turno").value,intrajornada:$("r_intra").value,tipo:$("r_tipo").value,motivo:$("r_motivo").value,motivoOutro:$("r_motivo").value==="Outro"?$("r_outro").value.trim():"",entrada:$("r_entrada").value,previsaoSaida:$("r_saida").value||"",criadoPor:uid||"",criadoEm:new Date().toISOString()};
+    const doc={matricula:$("r_mat").value.trim(),nome:$("r_nome").value.trim().toUpperCase(),filial:$("r_filial").value,funcao:valorFuncao("r"),escala:$("r_escala").value,turno:$("r_turno").value,tipo:$("r_tipo").value,motivo:$("r_motivo").value,motivoOutro:$("r_motivo").value==="Outro"?$("r_outro").value.trim():"",entrada:$("r_entrada").value,previsaoSaida:$("r_saida").value||"",criadoPor:uid||"",criadoEm:new Date().toISOString()};
     $("r_submit").disabled=true;
     try{await apiPost({action:"addReserva",data:doc});$("formReserva").reset();showMsg($("r_msg"),"ok",`Entrada de ${doc.nome} registrada.`)}
     catch(err){showMsg($("r_msg"),"err",errText(err))}
@@ -480,7 +483,7 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
   function preencherPorMatricula(){
     const m=$("m_mat").value.trim();
     const r=ultimaReserva(m,true)||ultimaReserva(m,false);
-    if(r){$("m_nome").value=r.nome;$("c_filial").value=r.filial;setFuncao("c",r.funcao);$("c_escala").value=r.escala;if(r.turno)$("c_turno").value=r.turno;$("m_found").textContent=`Na reserva desde ${fmt(r.entrada)} · filial ${r.filial}`}
+    if(r){$("m_nome").value=r.nome;$("c_filial").value=r.filial;setFuncao("c",r.funcao);$("c_escala").value=r.escala;if(r.turno)$("c_turno").value=r.turno;$("m_found").textContent=`Na reserva desde ${fmt(r.entrada)} · filial ${r.filial} · escala cadastrada: ${r.escala||"—"}${r.turno?" · "+r.turno:""}`}
     else $("m_found").textContent=m?"Matrícula não encontrada na reserva. Preencha os dados manualmente.":"";
     excluidos.clear();atualizarDias();
   }
@@ -488,6 +491,7 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
   $("m_mat").addEventListener("blur",preencherPorMatricula);
   function limparMov(){
     ["m_mat","m_nome","m_ate","c_filial","c_funcao","c_funcaoOutra","c_escala","c_turno","c_local","c_mat2","c_nome2","c_escalaCob","c_hIni","c_hFim","c_motivo","c_motivoOutro","n_motivo","o_motivo"].forEach(id=>{$(id).value="";$(id).removeAttribute("aria-invalid")});
+    document.querySelectorAll('input[name="c_intra"]').forEach(r=>r.checked=false);$("c_intraGrp").style.outline="";
     $("m_data").value=today();$("m_found").textContent="";$("c_funcaoOutraWrap").hidden=true;$("c_motivoOutroWrap").hidden=true;excluidos.clear();atualizarDias();
   }
   $("m_clear").addEventListener("click",limparMov);
@@ -498,6 +502,9 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
     let bad=false;["m_mat","m_nome","m_data",...req].forEach(id=>{if(mark($(id),!$(id).value.trim()))bad=true});
     if(COB(s)&&$("c_funcao").value==="OUTRA"&&mark($("c_funcaoOutra"),!$("c_funcaoOutra").value.trim()))bad=true;
     if(COB(s)&&$("c_motivo").value==="OUTRO"&&mark($("c_motivoOutro"),!$("c_motivoOutro").value.trim()))bad=true;
+    const intra=(document.querySelector('input[name="c_intra"]:checked')||{}).value||"";
+    $("c_intraGrp").style.outline=COB(s)&&!intra?"2px solid var(--danger)":"";$("c_intraGrp").style.borderRadius="999px";
+    if(COB(s)&&!intra)bad=true;
     if(COB(s)&&(!$("c_hIni").value)!==(!$("c_hFim").value)){mark($("c_hIni"),!$("c_hIni").value);mark($("c_hFim"),!$("c_hFim").value);bad=true}
     if(bad)return showMsg($("m_msg"),"err","Preencha os campos obrigatórios destacados.");
     if(!db)return showMsg($("m_msg"),"err","Sem conexão com a planilha. Verifique a internet e tente de novo.");
@@ -517,7 +524,7 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
     const r=ultimaReserva(mat,true)||ultimaReserva(mat,false),hoje=today(),agora=new Date().toISOString();
     const regs=dias.map(iso=>{
       const b={situacao:(s==="cobertura"&&iso>hoje)?"programado":s,matricula:mat,nome:$("m_nome").value.trim().toUpperCase(),data:iso,criadoPor:uid||"",criadoEm:agora};
-      if(COB(s))Object.assign(b,{filial:$("c_filial").value,funcao:valorFuncao("c"),escala:$("c_escala").value,turno:$("c_turno").value,local:$("c_local").value.trim().toUpperCase(),matCoberto:$("c_mat2").value.trim(),nomeCoberto:$("c_nome2").value.trim().toUpperCase(),escalaCoberto:$("c_escalaCob").value,horario:fmtHora($("c_hIni").value,$("c_hFim").value),motivo:$("c_motivo").value==="OUTRO"?$("c_motivoOutro").value.trim().toUpperCase():$("c_motivo").value});
+      if(COB(s))Object.assign(b,{filial:$("c_filial").value,funcao:valorFuncao("c"),escala:$("c_escala").value,turno:$("c_turno").value,local:$("c_local").value.trim().toUpperCase(),matCoberto:$("c_mat2").value.trim(),nomeCoberto:$("c_nome2").value.trim().toUpperCase(),escalaCoberto:$("c_escalaCob").value,intrajornada:intra,horario:fmtHora($("c_hIni").value,$("c_hFim").value),motivo:$("c_motivo").value==="OUTRO"?$("c_motivoOutro").value.trim().toUpperCase():$("c_motivo").value});
       else{b.filial=r?r.filial:"";b.funcao=r?r.funcao:"";b.escala=r?r.escala:"";b.motivo=s==="ocorrencia"?$("o_motivo").value:s==="nao_utilizado"?$("n_motivo").value.trim():""}
       return b;
     });
@@ -541,7 +548,7 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
   function localizarSaida(){
     const m=$("x_mat").value.trim(),r=ultimaReserva(m,true);
     $("x_nome").value=r?r.nome:"";
-    if(r)$("x_found").textContent=`Na reserva desde ${fmt(r.entrada)} · filial ${r.filial} · ${r.tipo}`;
+    if(r)$("x_found").textContent=`Na reserva desde ${fmt(r.entrada)} · filial ${r.filial} · escala cadastrada: ${r.escala||"—"} · ${r.tipo}`;
     else if(m)$("x_found").textContent=ultimaReserva(m,false)?"Essa matrícula já tem saída registrada.":"Matrícula não encontrada na reserva. Registre a entrada primeiro.";
     else $("x_found").textContent="";
     return r;
@@ -625,7 +632,7 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
       const venc=atv.filter(x=>x.previsaoSaida&&x.previsaoSaida<hoje).length;
       $("counts").innerHTML=`<span class="chip">${atv.length} na reserva</span><span class="chip gray">${atv.filter(x=>x.tipo==="Transitória").length} transitória</span><span class="chip gray">${atv.filter(x=>x.tipo==="Permanente").length} permanente</span>${rows.length-atv.length?`<span class="chip gray">${rows.length-atv.length} já saíram</span>`:""}${venc?`<span class="chip red">${venc} com previsão de saída vencida</span>`:""}`;
       thead.innerHTML="<tr><th>Matrícula</th><th>Nome</th><th>Filial</th><th>Função</th><th>Escala</th><th>Tipo</th><th>Motivo da entrada</th><th>Entrada</th><th>Prev. saída</th><th>Saída efetiva</th><th></th></tr>";
-      tbody.innerHTML=rows.length?rows.map(x=>`<tr><td class="mono">${esc(x.matricula)}</td><td>${esc(x.nome)}</td><td class="mono" title="${esc(FILIAIS[x.filial]||"")}">${esc(x.filial)}</td><td>${esc(x.funcao)}</td><td class="mono">${esc(x.escala)}${x.turno||x.intrajornada?`<br><span class="hint">${esc([x.turno,x.intrajornada?"Intrajornada: "+x.intrajornada:""].filter(Boolean).join(" · "))}</span>`:""}</td><td>${esc(x.tipo)}</td><td>${esc(x.motivo)}${x.motivoOutro?`: ${esc(x.motivoOutro)}`:""}</td><td class="mono">${fmt(x.entrada)}</td><td class="mono">${x.previsaoSaida?`<span class="${!x.saidaEfetiva&&x.previsaoSaida<hoje?"chip red":""}">${fmt(x.previsaoSaida)}</span>`:"—"}</td><td>${x.saidaEfetiva?`<span class="mono">${fmt(x.saidaEfetiva)}</span><br><span class="hint">${esc(x.motivoSaida)}${detalheSaida(x)?" · "+esc(detalheSaida(x)):""}</span>`:"—"}</td><td>${podeExcluir(x)?`<button class="btn danger small" data-del="reservas/${esc(x._id)}">Excluir</button>`:""}</td></tr>`).join("")
+      tbody.innerHTML=rows.length?rows.map(x=>`<tr><td class="mono">${esc(x.matricula)}</td><td>${esc(x.nome)}</td><td class="mono" title="${esc(FILIAIS[x.filial]||"")}">${esc(x.filial)}</td><td>${esc(x.funcao)}</td><td class="mono">${esc(x.escala)}${x.turno?`<br><span class="hint">${esc(x.turno)}</span>`:""}</td><td>${esc(x.tipo)}</td><td>${esc(x.motivo)}${x.motivoOutro?`: ${esc(x.motivoOutro)}`:""}</td><td class="mono">${fmt(x.entrada)}</td><td class="mono">${x.previsaoSaida?`<span class="${!x.saidaEfetiva&&x.previsaoSaida<hoje?"chip red":""}">${fmt(x.previsaoSaida)}</span>`:"—"}</td><td>${x.saidaEfetiva?`<span class="mono">${fmt(x.saidaEfetiva)}</span><br><span class="hint">${esc(x.motivoSaida)}${detalheSaida(x)?" · "+esc(detalheSaida(x)):""}</span>`:"—"}</td><td>${podeExcluir(x)?`<button class="btn danger small" data-del="reservas/${esc(x._id)}">Excluir</button>`:""}</td></tr>`).join("")
         :`<tr><td colspan="11" class="empty">${db?"Nenhum colaborador com esses filtros. Os registros feitos na aba Entrada na reserva aparecem aqui.":"Carregando registros…"}</td></tr>`;
     }else{
       const rows=filtrar(movs,"data").sort((a,b)=>(b.data||"").localeCompare(a.data||"")||(b.criadoEm||"").localeCompare(a.criadoEm||""));
@@ -633,7 +640,7 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
       const cls={cobertura:"",programado:"",ocorrencia:"warn"};
       $("counts").innerHTML=Object.keys(SIT).filter(k=>n(k)||k==="cobertura").map(k=>`<span class="chip ${cls[k]??"gray"}">${n(k)} ${SIT[k].toLowerCase()}</span>`).join("");
       thead.innerHTML="<tr><th>Data</th><th>Situação</th><th>Matrícula</th><th>Nome (reserva)</th><th>Filial</th><th>Função / Escala</th><th>Posto de cobertura</th><th>Colaborador coberto</th><th>Motivo</th><th></th></tr>";
-      tbody.innerHTML=rows.length?rows.map(x=>`<tr><td class="mono">${fmt(x.data)}</td><td><span class="chip ${COB(x.situacao)?"":x.situacao==="ocorrencia"?"warn":"gray"}">${SIT[x.situacao]||esc(x.situacao)}</span></td><td class="mono">${esc(x.matricula)}</td><td>${esc(x.nome)}</td><td class="mono">${esc(x.filial||"—")}</td><td>${x.funcao?`${esc(x.funcao)} · ${esc(x.escala)}`:"—"}</td><td>${esc(x.local||"—")}${x.turno||x.horario?`<br><span class="hint">${esc([x.turno,x.horario].filter(Boolean).join(" · "))}</span>`:""}</td><td>${x.matCoberto?`<span class="mono">${esc(x.matCoberto)}</span> ${esc(x.nomeCoberto)}${x.escalaCoberto?`<br><span class="hint">Escala ${esc(x.escalaCoberto)}</span>`:""}`:"—"}</td><td>${esc(x.motivo||"—")}</td><td>${podeExcluir(x)?`<button class="btn danger small" data-del="movimentacoes/${esc(x._id)}">Excluir</button>`:""}</td></tr>`).join("")
+      tbody.innerHTML=rows.length?rows.map(x=>`<tr><td class="mono">${fmt(x.data)}</td><td><span class="chip ${COB(x.situacao)?"":x.situacao==="ocorrencia"?"warn":"gray"}">${SIT[x.situacao]||esc(x.situacao)}</span></td><td class="mono">${esc(x.matricula)}</td><td>${esc(x.nome)}</td><td class="mono">${esc(x.filial||"—")}</td><td>${x.funcao?`${esc(x.funcao)} · ${esc(x.escala)}`:"—"}</td><td>${esc(x.local||"—")}${x.turno||x.horario||x.intrajornada?`<br><span class="hint">${esc([x.turno,x.horario,x.intrajornada?"Intrajornada: "+x.intrajornada:""].filter(Boolean).join(" · "))}</span>`:""}</td><td>${x.matCoberto?`<span class="mono">${esc(x.matCoberto)}</span> ${esc(x.nomeCoberto)}${x.escalaCoberto?`<br><span class="hint">Escala ${esc(x.escalaCoberto)}</span>`:""}`:"—"}</td><td>${esc(x.motivo||"—")}</td><td>${podeExcluir(x)?`<button class="btn danger small" data-del="movimentacoes/${esc(x._id)}">Excluir</button>`:""}</td></tr>`).join("")
         :`<tr><td colspan="10" class="empty">${db?"Nenhuma situação registrada com esses filtros. Os lançamentos da aba Situação do dia aparecem aqui.":"Carregando registros…"}</td></tr>`;
     }
   }
@@ -704,7 +711,7 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
       A:r.matricula||mv.matricula||"",B:r.nome||mv.nome||"",C:r.filial||mv.filial||"",
       D:tituloCaso(r.funcao||mv.funcao),E:String(r.escala||mv.escala||"").toLowerCase(),F:r.tipo||"",G:r.motivo||"",
       H:serial(r.entrada),I:serial(r.previsaoSaida),J:serial(r.saidaEfetiva),K:serial(mv.data),
-      L:mv.situacao?SIT[mv.situacao]:"",M:mv.local?[mv.local,mv.turno,mv.horario].filter(Boolean).join(" — "):"",N:mv.matCoberto||""}));
+      L:mv.situacao?SIT[mv.situacao]:"",M:mv.local?[mv.local,mv.turno,mv.horario,mv.intrajornada?"Intrajornada: "+mv.intrajornada:""].filter(Boolean).join(" — "):"",N:mv.matCoberto||""}));
   }
   $("btnControle").addEventListener("click",async()=>{
     const btn=$("btnControle");
@@ -813,7 +820,7 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
         {didParseCell:d=>{if(d.section==="body"&&d.column.index===8&&d.cell.raw!=="–"){const x=resOrd[d.row.index];if(x&&!x.saidaEfetiva&&x.previsaoSaida&&x.previsaoSaida<hoje){d.cell.styles.textColor=[170,38,53];d.cell.styles.fontStyle="bold"}}}});
       /* situações do dia */
       const mvRows=mv.slice().sort((a,b)=>(a.data||"").localeCompare(b.data||"")||String(a.matricula).localeCompare(String(b.matricula),"pt",{numeric:true})).map(x=>[
-        fmt(x.data),SIT[x.situacao]||x.situacao,x.matricula,x.nome,x.filial||"",x.local?[x.local,x.turno,x.horario].filter(Boolean).join(" — "):"–",x.matCoberto?(x.matCoberto+" "+(x.nomeCoberto||"")+(x.escalaCoberto?" ("+x.escalaCoberto.toLowerCase()+")":"")):"–",x.motivo||"–"]);
+        fmt(x.data),SIT[x.situacao]||x.situacao,x.matricula,x.nome,x.filial||"",x.local?[x.local,x.turno,x.horario,x.intrajornada?"Intrajornada: "+x.intrajornada:""].filter(Boolean).join(" — "):"–",x.matCoberto?(x.matCoberto+" "+(x.nomeCoberto||"")+(x.escalaCoberto?" ("+x.escalaCoberto.toLowerCase()+")":"")):"–",x.motivo||"–"]);
       const corSit={"Em cobertura":[30,123,60],"Programado":[20,83,45],"Ocorrência":[148,97,0]};
       const comMotivo=mv.some(x=>x.motivo);
       if(!comMotivo)mvRows.forEach(r=>r.pop());
