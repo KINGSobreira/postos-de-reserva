@@ -182,6 +182,10 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
         <div class="hint full" id="m_found"></div>
       </div>
       <datalist id="listaReserva"></datalist>
+      <div id="m_diasWrap" style="margin-top:12px">
+        <span class="hint" id="m_diasInfo"></span>
+        <div class="dias" id="m_dias"></div>
+      </div>
 
       <div class="sub" id="blk-cobertura">
         <h3 id="c_titulo">Em cobertura</h3>
@@ -206,10 +210,6 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
           <label class="f"><span>Motivo da cobertura <em>*</em></span>
             <select id="c_motivo"><option value="">Selecione</option><option>AFASTAMENTO</option><option>ATESTADO MÉDICO</option><option>CASAMENTO</option><option>FALTA NÃO JUSTIFICADA</option><option>FÉRIAS</option><option>INTEGRAÇÃO</option><option>SUSPENSÃO</option><option>FERIADO</option><option>LICENÇA PATERNIDADE</option><option>LICENÇA ÓBITO</option><option>ACOMPANHAMENTO DE FILHO MENOR DE 6 ANOS</option><option>FOLGA ESCALA 6X1</option><option>FOLGA ESCALA 5X1</option><option>FOLGA TRE</option><option>RECICLAGEM</option><option>ABANDONO DE EMPREGO</option><option>DEVOLUÇÃO</option><option>DESLIGAMENTO</option><option>COBERTURA DE FOLGA</option><option>IMPLANTAÇÃO</option><option>CONVOCAÇÃO SINDICAL</option><option value="OUTRO">OUTRO MOTIVO</option></select></label>
           <label class="f" id="c_motivoOutroWrap" hidden><span>Qual motivo? <em>*</em></span><input id="c_motivoOutro" autocomplete="off"></label>
-          <div class="full" id="m_diasWrap">
-            <span class="hint" id="m_diasInfo"></span>
-            <div class="dias" id="m_dias"></div>
-          </div>
         </div>
       </div>
 
@@ -406,10 +406,10 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
   function diasDoLancamento(){
     const s=sitAtual(),ini=$("m_data").value;
     if(!ini)return [];
-    if(!COB(s))return [ini];
+    if(!PER(s))return [ini];
     const fim=$("m_ate").value||ini,periodo=fim!==ini;
-    /* quem está na reserva passa a trabalhar na escala de quem está cobrindo */
-    const escT=periodo?escalaDias():"";
+    /* cobertura: escala de quem está sendo coberto; ocorrência: escala do cadastro na reserva */
+    const escT=periodo?(COB(s)?escalaDias():escalaCadastro()):"";
     const alterna=escT==="12X36";
     if(fim<ini)return null;
     const out=[],d=new Date(ini+"T12:00:00"),end=new Date(fim+"T12:00:00"),par=d.getDate()%2;
@@ -421,6 +421,9 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
     return out;
   }
   const escalaDias=()=>$("c_escalaCob").value||$("c_escala").value;
+  const PER=s=>COB(s)||s==="ocorrencia";
+  /* escala com que o colaborador foi cadastrado na reserva */
+  const escalaCadastro=()=>{const m=$("m_mat").value.trim(),r=m&&(ultimaReserva(m,true)||ultimaReserva(m,false));return r?r.escala:""};
   const jaLancado=(mat,iso)=>movs.some(x=>x.matricula===mat&&x.data===iso);
   /* cobertura em escala 12x36: depois de um plantão 12x36 vem um dia de folga.
      Devolve o plantão vizinho que impede o lançamento, ou "" se estiver livre.
@@ -437,21 +440,22 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
   }
   function atualizarDias(){
     const s=sitAtual();
-    $("m_diasWrap").hidden=!COB(s);
-    if(!COB(s))return;
+    $("m_diasWrap").hidden=!PER(s);
+    if(!PER(s))return;
     const dias=diasDoLancamento(),mat=$("m_mat").value.trim(),hoje=today(),periodo=!!$("m_ate").value&&$("m_ate").value!==$("m_data").value;
-    const esc=periodo?escalaDias():"",daReserva=!$("c_escalaCob").value;
+    const esc=periodo?(COB(s)?escalaDias():escalaCadastro()):"",daReserva=!$("c_escalaCob").value;
     if(dias===null){$("m_diasInfo").textContent="A data final não pode ser antes da data inicial.";$("m_dias").innerHTML="";return}
     if(!dias.length){$("m_diasInfo").textContent=!$("m_data").value?"Escolha a data para ver os dias que serão lançados.":"Nenhum dia no período.";$("m_dias").innerHTML="";return}
     let n=0,fut=0,bloq12=0;
     $("m_dias").innerHTML=dias.map(iso=>{
-      const dup=!!mat&&jaLancado(mat,iso),viz=dup?"":conflito12x36(mat,iso),on=!dup&&!viz&&!excluidos.has(iso),f=s==="cobertura"&&iso>hoje;
+      const dup=!!mat&&jaLancado(mat,iso),viz=dup||!COB(s)?"":conflito12x36(mat,iso),on=!dup&&!viz&&!excluidos.has(iso),f=s==="cobertura"&&iso>hoje;
       if(on){n++;if(f)fut++}
       if(viz)bloq12++;
       return `<button type="button" class="dia${f?" fut":""}" data-iso="${iso}" aria-pressed="${on}"${dup?' disabled title="Já existe lançamento nesse dia"':viz?` disabled title="Folga da escala 12x36: trabalhou em ${fmt(viz).slice(0,5)}"`:""}>${DSEM[new Date(iso+"T12:00:00").getDay()]} ${fmt(iso).slice(0,5)}</button>`;
     }).join("");
-    const quem=daReserva?"da reserva":"do coberto";
-    const regra=esc==="12X36"?` Seguindo a escala ${quem} (12x36): dias ${new Date($("m_data").value+"T12:00:00").getDate()%2?"ímpares":"pares"}.`:esc==="5X2"?` Seguindo a escala ${quem} (5x2): segunda a sexta.`:esc?` Seguindo a escala ${quem} (${esc.toLowerCase()}): toque nos dias de folga para tirar.`:"";
+    const quem=!COB(s)?"do cadastro na reserva":daReserva?"da reserva":"do coberto";
+    const semEsc=!COB(s)&&periodo&&!esc?(mat?" Matrícula sem cadastro na reserva: todos os dias do período foram marcados.":" Digite a matrícula para aplicar a escala do colaborador."):"";
+    const regra=semEsc||esc==="12X36"?semEsc||` Seguindo a escala ${quem} (12x36): dias ${new Date($("m_data").value+"T12:00:00").getDate()%2?"ímpares":"pares"}.`:esc==="5X2"?` Seguindo a escala ${quem} (5x2): segunda a sexta.`:esc?` Seguindo a escala ${quem} (${esc.toLowerCase()}): toque nos dias de folga para tirar.`:"";
     $("m_diasInfo").textContent=`${n} ${n===1?"dia será lançado":"dias serão lançados"}.${regra}`+(fut?` ${fut===1?"1 dia é futuro e vai":fut+" dias são futuros e vão"} como Programado.`:"")+(bloq12?` ${bloq12===1?"1 dia bloqueado":bloq12+" dias bloqueados"} por ser folga da escala 12x36 (dia seguinte ou anterior a um plantão já lançado).`:"");
   }
   $("m_dias").addEventListener("click",e=>{const b=e.target.closest(".dia");if(!b||b.disabled)return;const iso=b.dataset.iso;excluidos.has(iso)?excluidos.delete(iso):excluidos.add(iso);atualizarDias()});
@@ -466,7 +470,7 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
   function trocarSituacao(){
     const s=sitAtual();
     $("blk-cobertura").hidden=!COB(s);$("blk-nao_utilizado").hidden=s!=="nao_utilizado";$("blk-ocorrencia").hidden=s!=="ocorrencia";
-    $("m_ateWrap").hidden=!COB(s);$("m_dataLbl").textContent=COB(s)?"Data (início)":"Data";
+    $("m_ateWrap").hidden=!PER(s);$("m_dataLbl").textContent=PER(s)?"Data (início)":"Data";
     $("c_titulo").textContent=s==="programado"?"Programado":"Em cobertura";
     excluidos.clear();atualizarDias();
   }
@@ -502,7 +506,7 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
     if(dias===null){mark($("m_ate"),true);return showMsg($("m_msg"),"err","A data final não pode ser antes da data inicial.")}
     mark($("m_ate"),false);
     dias=dias.filter(iso=>!excluidos.has(iso));
-    if(!COB(s)&&dias.length&&jaLancado(mat,dias[0]))return showMsg($("m_msg"),"err",`Já existe lançamento dessa matrícula em ${fmt(dias[0])}. Para corrigir, exclua o anterior em Registros.`);
+    if(dias.length===1&&!COB(s)&&jaLancado(mat,dias[0]))return showMsg($("m_msg"),"err",`Já existe lançamento dessa matrícula em ${fmt(dias[0])}. Para corrigir, exclua o anterior em Registros.`);
     dias=dias.filter(iso=>!jaLancado(mat,iso));
     if(COB(s)){
       const conf=dias.map(iso=>[iso,conflito12x36(mat,iso)]).filter(x=>x[1]);
