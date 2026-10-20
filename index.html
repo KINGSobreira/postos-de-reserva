@@ -781,6 +781,19 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
       H:serial(r.entrada),I:serial(r.previsaoSaida),J:serial(r.saidaEfetiva),K:serial(mv.data),
       L:mv.situacao?SIT[mv.situacao]:"",M:mv.local?[mv.local,mv.turno,mv.horario,mv.intrajornada?"Intrajornada: "+mv.intrajornada:""].filter(Boolean).join(" — "):"",N:mv.matCoberto||""}));
   }
+  /* o modelo é baixado uma vez e guardado na memória da página */
+  let modeloBuf=null;
+  async function carregarModelo(){
+    if(modeloBuf)return modeloBuf;
+    const ctrl=new AbortController(),t=setTimeout(()=>ctrl.abort(),30000);
+    try{
+      const r=await fetch("modelo-controle-reservas.xlsx?v="+Date.now(),{signal:ctrl.signal});
+      if(!r.ok)throw new Error("modelo "+r.status);
+      modeloBuf=await r.arrayBuffer();return modeloBuf;
+    }finally{clearTimeout(t)}
+  }
+  setTimeout(()=>{carregarModelo().catch(()=>{modeloBuf=null})},3000);
+  const comPrazo=(p,ms)=>Promise.race([p,new Promise((_,rej)=>setTimeout(()=>rej(new Error("tempo esgotado")),ms))]);
   $("btnControle").addEventListener("click",async()=>{
     const btn=$("btnControle");
     if(!window.JSZip){$("status").textContent="O gerador da planilha não carregou. Recarregue a página e tente de novo.";return}
@@ -789,8 +802,10 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
       const rows=linhasControle();
       if(rows.length>2000)$("status").textContent=`O modelo comporta 2.000 linhas; ${rows.length-2000} registros mais recentes ficaram de fora.`;
       const mapa={};rows.slice(0,2000).forEach((x,i)=>mapa[14+i]=x);
-      const buf=await (await fetch("modelo-controle-reservas.xlsx",{cache:"no-store"})).arrayBuffer();
-      const zip=await JSZip.loadAsync(buf);
+      btn.textContent="Carregando modelo…";
+      const buf=await carregarModelo();
+      btn.textContent="Preenchendo planilha…";
+      const zip=await comPrazo(JSZip.loadAsync(buf),60000);
       const path="xl/worksheets/sheet1.xml";
       let xml=await zip.file(path).async("string");
       xml=xml.replace(/<c r="([A-N])(\d+)" s="(\d+)"\/>/g,(m,col,row,st)=>{
@@ -800,11 +815,13 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
         return `<c r="${col}${row}" s="${st}" t="inlineStr"><is><t>${xmlEsc(v)}</t></is></c>`;
       });
       zip.file(path,xml);
-      const blob=await zip.generateAsync({type:"blob",compression:"DEFLATE",mimeType:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});
+      btn.textContent="Finalizando arquivo…";
+      const blob=await comPrazo(zip.generateAsync({type:"blob",compression:"DEFLATE",compressionOptions:{level:1},mimeType:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}),90000);
       const d=new Date(),nome=`CONTROLE_DE_RESERVAS_-_${MESES[d.getMonth()]}_${d.getFullYear()}.xlsx`;
       const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=nome;document.body.appendChild(a);a.click();
       setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},2000);
-    }catch(e){$("status").textContent="Não foi possível gerar a planilha. Recarregue a página e tente de novo."}
+      $("status").textContent="Controle de Reservas gerado: "+nome+". Confira a pasta de downloads.";
+    }catch(e){console.error(e);modeloBuf=null;$("status").textContent="Não foi possível gerar a planilha ("+((e&&e.message)||"erro")+"). Recarregue a página com Ctrl+F5 e tente de novo."}
     finally{btn.disabled=false;btn.textContent=txt}
   });
 
