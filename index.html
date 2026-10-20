@@ -141,7 +141,8 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
         <label class="f"><span>Escala <em>*</em></span>
           <select id="r_escala" name="escala" required><option value="">Selecione</option><option>12X36</option><option>5X2</option><option>6X1</option><option>5X1</option></select></label>
         <label class="f"><span>Tipo de reserva <em>*</em></span>
-          <select id="r_tipo" name="tipo" required><option value="">Selecione</option><option>Transitória</option><option>Permanente</option></select></label>
+          <select id="r_tipo" name="tipo" required><option value="">Selecione</option><option>Transitória</option><option>Permanente</option><option value="POSTO">Reserva de posto</option></select></label>
+        <label class="f" id="r_tipoPostoWrap" hidden><span>Qual posto? <em>*</em></span><input id="r_tipoPosto" autocomplete="off" placeholder="Ex.: UNIMED"><span class="hint">Reserva para cobrir furos deste posto. Fica registrado como RESERVA DE POSTO - NOME DO POSTO.</span></label>
         <label class="f full"><span>Motivo da entrada <em>*</em></span>
           <select id="r_motivo" name="motivo" required><option value="">Selecione</option><option>Reserva permanente</option><option>Retorno de afastamento</option><option>Fim de contrato</option><option>Aguardando posto fixo</option><option>Aguardando desligamento</option><option>Devolvido pelo cliente</option><option>Outro</option></select></label>
         <label class="f full" id="r_outroWrap" hidden><span>Descreva o motivo <em>*</em></span><input id="r_outro" name="motivoOutro" autocomplete="off"></label>
@@ -378,18 +379,20 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
   /* ENTRADA NA RESERVA */
   $("r_entrada").value=today();
   $("r_motivo").addEventListener("change",()=>{$("r_outroWrap").hidden=$("r_motivo").value!=="Outro"});
-  $("formReserva").addEventListener("reset",()=>setTimeout(()=>{$("r_outroWrap").hidden=true;$("r_funcaoOutraWrap").hidden=true;$("r_entrada").value=today();document.querySelectorAll("#formReserva [aria-invalid]").forEach(e=>e.removeAttribute("aria-invalid"))}));
+  $("r_tipo").addEventListener("change",()=>{$("r_tipoPostoWrap").hidden=$("r_tipo").value!=="POSTO"});
+  $("formReserva").addEventListener("reset",()=>setTimeout(()=>{$("r_outroWrap").hidden=true;$("r_tipoPostoWrap").hidden=true;$("r_funcaoOutraWrap").hidden=true;$("r_entrada").value=today();document.querySelectorAll("#formReserva [aria-invalid]").forEach(e=>e.removeAttribute("aria-invalid"))}));
   $("formReserva").addEventListener("submit",async e=>{
     e.preventDefault();
     const req=["r_mat","r_nome","r_filial","r_funcao","r_escala","r_turno","r_tipo","r_motivo","r_entrada"];
     let bad=false;req.forEach(id=>{if(mark($(id),!$(id).value.trim()))bad=true});
     if($("r_funcao").value==="OUTRA"&&mark($("r_funcaoOutra"),!$("r_funcaoOutra").value.trim()))bad=true;
+    if($("r_tipo").value==="POSTO"&&mark($("r_tipoPosto"),!$("r_tipoPosto").value.trim()))bad=true;
     if($("r_motivo").value==="Outro"&&mark($("r_outro"),!$("r_outro").value.trim()))bad=true;
     if(bad)return showMsg($("r_msg"),"err","Preencha os campos obrigatórios destacados.");
     if($("r_saida").value&&$("r_saida").value<$("r_entrada").value){mark($("r_saida"),true);return showMsg($("r_msg"),"err","A previsão de saída não pode ser antes da entrada.")}
     mark($("r_saida"),false);
     if(!db)return showMsg($("r_msg"),"err","Sem conexão com a planilha. Verifique a internet e tente de novo.");
-    const doc={matricula:$("r_mat").value.trim(),nome:$("r_nome").value.trim().toUpperCase(),filial:$("r_filial").value,funcao:valorFuncao("r"),escala:$("r_escala").value,turno:$("r_turno").value,tipo:$("r_tipo").value,motivo:$("r_motivo").value,motivoOutro:$("r_motivo").value==="Outro"?$("r_outro").value.trim():"",entrada:$("r_entrada").value,previsaoSaida:$("r_saida").value||"",criadoPor:uid||"",criadoEm:new Date().toISOString()};
+    const doc={matricula:$("r_mat").value.trim(),nome:$("r_nome").value.trim().toUpperCase(),filial:$("r_filial").value,funcao:valorFuncao("r"),escala:$("r_escala").value,turno:$("r_turno").value,tipo:$("r_tipo").value==="POSTO"?"RESERVA DE POSTO - "+$("r_tipoPosto").value.trim().toUpperCase():$("r_tipo").value,motivo:$("r_motivo").value,motivoOutro:$("r_motivo").value==="Outro"?$("r_outro").value.trim():"",entrada:$("r_entrada").value,previsaoSaida:$("r_saida").value||"",criadoPor:uid||"",criadoEm:new Date().toISOString()};
     $("r_submit").disabled=true;
     try{await apiPost({action:"addReserva",data:doc});$("formReserva").reset();showMsg($("r_msg"),"ok",`Entrada de ${doc.nome} registrada.`)}
     catch(err){showMsg($("r_msg"),"err",errText(err))}
@@ -628,7 +631,7 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
       const hoje=today();
       const atv=rows.filter(x=>!x.saidaEfetiva);
       const venc=atv.filter(x=>x.previsaoSaida&&x.previsaoSaida<hoje).length;
-      $("counts").innerHTML=`<span class="chip">${atv.length} na reserva</span><span class="chip gray">${atv.filter(x=>x.tipo==="Transitória").length} transitória</span><span class="chip gray">${atv.filter(x=>x.tipo==="Permanente").length} permanente</span>${rows.length-atv.length?`<span class="chip gray">${rows.length-atv.length} já saíram</span>`:""}${venc?`<span class="chip red">${venc} com previsão de saída vencida</span>`:""}`;
+      $("counts").innerHTML=`<span class="chip">${atv.length} na reserva</span><span class="chip gray">${atv.filter(x=>x.tipo==="Transitória").length} transitória</span><span class="chip gray">${atv.filter(x=>x.tipo==="Permanente").length} permanente</span>${atv.some(x=>String(x.tipo).startsWith("RESERVA DE POSTO"))?`<span class="chip gray">${atv.filter(x=>String(x.tipo).startsWith("RESERVA DE POSTO")).length} reserva de posto</span>`:""}${rows.length-atv.length?`<span class="chip gray">${rows.length-atv.length} já saíram</span>`:""}${venc?`<span class="chip red">${venc} com previsão de saída vencida</span>`:""}`;
       thead.innerHTML="<tr><th>Matrícula</th><th>Nome</th><th>Filial</th><th>Função</th><th>Escala</th><th>Tipo</th><th>Motivo da entrada</th><th>Entrada</th><th>Prev. saída</th><th>Saída efetiva</th><th></th></tr>";
       tbody.innerHTML=rows.length?rows.map(x=>`<tr><td class="mono">${esc(x.matricula)}</td><td>${esc(x.nome)}</td><td class="mono" title="${esc(FILIAIS[x.filial]||"")}">${esc(x.filial)}</td><td>${esc(x.funcao)}</td><td class="mono">${esc(x.escala)}${x.turno?`<br><span class="hint">${esc(x.turno)}</span>`:""}</td><td>${esc(x.tipo)}</td><td>${esc(x.motivo)}${x.motivoOutro?`: ${esc(x.motivoOutro)}`:""}</td><td class="mono">${fmt(x.entrada)}</td><td class="mono">${x.previsaoSaida?`<span class="${!x.saidaEfetiva&&x.previsaoSaida<hoje?"chip red":""}">${fmt(x.previsaoSaida)}</span>`:"—"}</td><td>${x.saidaEfetiva?`<span class="mono">${fmt(x.saidaEfetiva)}</span><br><span class="hint">${esc(x.motivoSaida)}${detalheSaida(x)?" · "+esc(detalheSaida(x)):""}</span>`:"—"}</td><td>${podeExcluir(x)?`<button class="btn danger small" data-del="reservas/${esc(x._id)}">Excluir</button>`:""}</td></tr>`).join("")
         :`<tr><td colspan="11" class="empty">${db?"Nenhum colaborador com esses filtros. Os registros feitos na aba Entrada na reserva aparecem aqui.":"Carregando registros…"}</td></tr>`;
