@@ -363,7 +363,8 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
   }));
   function ajustarBotoes(){
     const res=sub==="res";
-    $("btnXlsx").textContent=res?"Baixar planilha dos colaboradores":"Baixar planilha Excel";
+    $("btnXlsx").textContent="Baixar planilha dos colaboradores";
+    $("btnXlsx").hidden=!res;
     $("btnPdf").textContent=res?"Emitir PDF dos colaboradores":"Emitir PDF";
     $("btnControle").hidden=res;
   }
