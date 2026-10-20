@@ -359,8 +359,14 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
   document.querySelectorAll(".subtabs button").forEach(b=>b.addEventListener("click",()=>{
     sub=b.dataset.sub;
     document.querySelectorAll(".subtabs button").forEach(x=>x.setAttribute("aria-pressed",x===b));
-    $("fSitWrap").hidden=sub!=="mov";$("fStatusWrap").hidden=sub!=="res";render();
+    $("fSitWrap").hidden=sub!=="mov";$("fStatusWrap").hidden=sub!=="res";ajustarBotoes();render();
   }));
+  function ajustarBotoes(){
+    const res=sub==="res";
+    $("btnXlsx").textContent=res?"Baixar planilha dos colaboradores":"Baixar planilha Excel";
+    $("btnPdf").textContent=res?"Emitir PDF dos colaboradores":"Emitir PDF";
+    $("btnControle").hidden=res;
+  }
 
   function showMsg(el,kind,text){el.className="msg "+kind;el.textContent=text;el.hidden=false;clearTimeout(el._t);el._t=setTimeout(()=>el.hidden=true,6000)}
   function mark(el,bad){el.setAttribute("aria-invalid",bad?"true":"false");return bad}
@@ -723,14 +729,31 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
       "Data do Registro":dt(mv.data),"Situação do dia":mv.situacao?SIT[mv.situacao]:"",
       "Local da cobertura":mv.local||"","Matrícula do titular":mv.matCoberto||""}});
   }
+  const COLS_RES=["Matrícula","Nome do colaborador","Filial","Função","Escala","Turno","Tipo de reserva","Motivo da entrada","Entrada na reserva","Previsão de saída","Status","Saída efetiva","Motivo da saída","Detalhe da saída"];
+  function linhasReserva(){
+    return filtrar(reservas,"entrada").slice().sort((a,b)=>(a.saidaEfetiva?1:0)-(b.saidaEfetiva?1:0)||String(a.matricula).localeCompare(String(b.matricula),"pt",{numeric:true})).map(x=>({
+      "Matrícula":x.matricula,"Nome do colaborador":x.nome,"Filial":x.filial,"Função":x.funcao,"Escala":x.escala,"Turno":x.turno||"",
+      "Tipo de reserva":x.tipo,"Motivo da entrada":x.motivo+(x.motivoOutro?": "+x.motivoOutro:""),
+      "Entrada na reserva":dt(x.entrada),"Previsão de saída":dt(x.previsaoSaida),
+      "Status":x.saidaEfetiva?"Saiu":(x.previsaoSaida&&x.previsaoSaida<today()?"Na reserva (previsão vencida)":"Na reserva"),
+      "Saída efetiva":dt(x.saidaEfetiva),"Motivo da saída":x.motivoSaida||"","Detalhe da saída":x.saidaEfetiva?detalheSaida(x):""}));
+  }
   $("btnXlsx").addEventListener("click",async()=>{
     if(!window.XLSX){$("status").textContent="O gerador de planilha não carregou. Recarregue a página e tente de novo.";return}
+    if(sub==="res"){
+      const ws=XLSX.utils.json_to_sheet(linhasReserva(),{header:COLS_RES,cellDates:true,dateNF:"dd/mm/yyyy"});
+      ws["!cols"]=[10,34,8,22,8,10,30,26,14,14,26,14,20,40].map(w=>({wch:w}));
+      const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,"Colaboradores na reserva");
+      XLSX.writeFile(wb,`colaboradores_na_reserva_${today()}.xlsx`,{cellDates:true});
+      return;
+    }
     const ws=XLSX.utils.json_to_sheet(linhasPlanilha(),{header:COLS,cellDates:true,dateNF:"dd/mm/yyyy"});
     ws["!cols"]=[10,32,8,24,8,15,26,14,14,14,14,16,30,18].map(w=>({wch:w}));
     const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,"Reserva");
     XLSX.writeFile(wb,`reserva_${today()}.xlsx`,{cellDates:true});
   });
 
+  ajustarBotoes();
   render();
 
   /* CONTROLE DE RESERVAS: preenche o modelo (modelo-controle-reservas.xlsx) mantendo fórmulas,
@@ -796,10 +819,12 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
     btn.disabled=true;const txt=btn.textContent;btn.textContent="Gerando PDF…";
     try{
       const VERDE=[30,123,60],ESCURO=[20,83,45],CINZA=[93,106,99],LINHA=[216,224,219],ZEBRA=[244,247,245],TEXTO=[29,36,32];
+      const modoRes=sub==="res";
       const subAnt=sub;sub="res";const res=filtrar(reservas,"entrada");sub="mov";const mv=filtrar(movsComAuto(),"data");sub=subAnt;
       const hoje=today(),agora=new Date();
       const fil=$("fFilial").value,de=$("fDe").value,ate=$("fAte").value,q=$("q").value.trim();
-      const filtroTxt=["Filial: "+(fil?fil+" · "+(FILIAIS[fil]||""):"Todas"),"Período: "+(de||ate?(de?fmt(de):"início")+" a "+(ate?fmt(ate):"hoje"):"Todo o histórico")].concat(q?["Busca: "+q]:[]).join("   |   ");
+      const stTxt={ativo:"Na reserva",saiu:"Já saíram","":"Todos"}[$("fStatus").value];
+      const filtroTxt=(modoRes?["Status: "+stTxt]:[]).concat(["Filial: "+(fil?fil+" · "+(FILIAIS[fil]||""):"Todas"),"Período: "+(de||ate?(de?fmt(de):"início")+" a "+(ate?fmt(ate):"hoje"):"Todo o histórico")].concat(q?["Busca: "+q]:[])).join("   |   ");
       const logo=await logoDataUrl();
       const {jsPDF}=window.jspdf;const doc=new jsPDF({orientation:"landscape",unit:"mm",format:"a4"});
       const W=doc.internal.pageSize.getWidth(),H=doc.internal.pageSize.getHeight(),M=12;
@@ -809,7 +834,7 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
         const pg=doc.internal.getCurrentPageInfo().pageNumber;if(feitas.has(pg))return;feitas.add(pg);
         if(logo)doc.addImage(logo,"PNG",M,7,34,10);
         doc.setFont("helvetica","bold");doc.setFontSize(14);doc.setTextColor(...ESCURO);
-        doc.text("Relatório de Postos de Reserva",W-M,11.5,{align:"right"});
+        doc.text(modoRes?"Colaboradores na Reserva":"Relatório de Postos de Reserva",W-M,11.5,{align:"right"});
         doc.setFont("helvetica","normal");doc.setFontSize(8);doc.setTextColor(...CINZA);
         doc.text(filtroTxt,W-M,16.5,{align:"right"});
         doc.setDrawColor(...VERDE);doc.setLineWidth(0.7);doc.line(M,20,W-M,20);
@@ -832,7 +857,8 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
       /* indicadores */
       const ativos=res.filter(x=>!x.saidaEfetiva);
       const cont=k=>mv.filter(x=>x.situacao===k).length;
-      const cards=[["Na reserva",ativos.length],["Em cobertura",cont("cobertura")],["Programado",cont("programado")],["Disponível",cont("disponivel")],["Não utilizado",cont("nao_utilizado")],["Folga",cont("folga")],["Ocorrência",cont("ocorrencia")],["Prev. saída vencida",ativos.filter(x=>x.previsaoSaida&&x.previsaoSaida<hoje).length]];
+      const ehPosto=x=>String(x.tipo).startsWith("RESERVA DE POSTO");
+      const cards=modoRes?[["Na reserva",ativos.length],["Transitória",ativos.filter(x=>x.tipo==="Transitória").length],["Permanente",ativos.filter(x=>x.tipo==="Permanente").length],["Reserva de posto",ativos.filter(ehPosto).length],["Já saíram",res.length-ativos.length],["Prev. saída vencida",ativos.filter(x=>x.previsaoSaida&&x.previsaoSaida<hoje).length]]:[["Na reserva",ativos.length],["Em cobertura",cont("cobertura")],["Programado",cont("programado")],["Disponível",cont("disponivel")],["Não utilizado",cont("nao_utilizado")],["Folga",cont("folga")],["Ocorrência",cont("ocorrencia")],["Prev. saída vencida",ativos.filter(x=>x.previsaoSaida&&x.previsaoSaida<hoje).length]];
       const gap=3,cw=(W-2*M-gap*(cards.length-1))/cards.length;
       cards.forEach(([rot,val],i)=>{
         const x=M+i*(cw+gap),destaque=i===0;
@@ -841,8 +867,9 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
         doc.setFont("helvetica","bold");doc.setFontSize(16);doc.setTextColor(...(destaque?[255,255,255]:ESCURO));doc.text(String(val),x+3,33);
         doc.setFont("helvetica","normal");doc.setFontSize(7.3);doc.setTextColor(...(destaque?[230,245,235]:CINZA));doc.text(rot.toUpperCase(),x+3,38);
       });
-      doc.setFontSize(7.3);doc.setTextColor(...CINZA);doc.text("Situações contadas em dias no período. Disponível e Não utilizado são calculados automaticamente pela escala, nos dias de trabalho sem lançamento.",M,45.5);
-      const yInicio=52;
+      if(!modoRes){doc.setFontSize(7.3);doc.setTextColor(...CINZA);doc.text("Situações contadas em dias no período. Disponível e Não utilizado são calculados automaticamente pela escala, nos dias de trabalho sem lançamento.",M,45.5);}
+      const yInicio=modoRes?50:52;
+      if(!modoRes){
       /* resumo por colaborador */
       const porMat={};
       mv.forEach(x=>{const k=x.matricula;(porMat[k]=porMat[k]||{nome:x.nome,filial:x.filial,escala:x.escala,c:{}}).c[x.situacao]=(porMat[k].c[x.situacao]||0)+1});
@@ -854,15 +881,17 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
       const num={halign:"center",cellWidth:19};
       tabela("Resumo por colaborador (dias no período)",["Matrícula","Colaborador","Filial","Escala","Cobertura","Programado","Disponível","Não utilizado","Folga","Ocorrência","Total"],resumo,
         {0:{cellWidth:20},2:{cellWidth:14,halign:"center"},3:{cellWidth:16,halign:"center"},4:num,5:num,6:num,7:num,8:num,9:num,10:{halign:"center",cellWidth:15,fontStyle:"bold"}});
+      }
       /* colaboradores na reserva */
       const resOrd=res.slice().sort((a,b)=>(a.saidaEfetiva?1:0)-(b.saidaEfetiva?1:0)||(b.entrada||"").localeCompare(a.entrada||""));
       const resRows=resOrd.map(x=>[
-        x.matricula,x.nome,x.filial,tituloCaso(x.funcao),String(x.escala||"").toLowerCase(),x.tipo,x.motivo+(x.motivoOutro?": "+x.motivoOutro:""),fmt(x.entrada),x.previsaoSaida?fmt(x.previsaoSaida):"–",
+        x.matricula,x.nome,x.filial,tituloCaso(x.funcao),String(x.escala||"").toLowerCase()+(x.turno?"\n"+x.turno.toLowerCase():""),x.tipo,x.motivo+(x.motivoOutro?": "+x.motivoOutro:""),fmt(x.entrada),x.previsaoSaida?fmt(x.previsaoSaida):"–",
         x.saidaEfetiva?fmt(x.saidaEfetiva)+" · "+x.motivoSaida+(detalheSaida(x)?" ("+detalheSaida(x)+")":""):"Na reserva"]);
       tabela("Colaboradores na reserva",["Matrícula","Colaborador","Filial","Função","Escala","Tipo","Motivo da entrada","Entrada","Prev. saída","Saída"],resRows,
         {0:{cellWidth:18},2:{cellWidth:12,halign:"center"},4:{cellWidth:13,halign:"center"},7:{cellWidth:17,halign:"center"},8:{cellWidth:17,halign:"center"}},
         {didParseCell:d=>{if(d.section==="body"&&d.column.index===8&&d.cell.raw!=="–"){const x=resOrd[d.row.index];if(x&&!x.saidaEfetiva&&x.previsaoSaida&&x.previsaoSaida<hoje){d.cell.styles.textColor=[170,38,53];d.cell.styles.fontStyle="bold"}}}});
       /* situações do dia */
+      if(!modoRes){
       const mvRows=mv.slice().sort((a,b)=>(a.data||"").localeCompare(b.data||"")||String(a.matricula).localeCompare(String(b.matricula),"pt",{numeric:true})).map(x=>[
         fmt(x.data),SIT[x.situacao]||x.situacao,x.matricula,x.nome,x.filial||"",x.local?[x.local,x.turno,x.horario,x.intrajornada?"Intrajornada: "+x.intrajornada:""].filter(Boolean).join(" — "):"–",x.matCoberto?(x.matCoberto+" "+(x.nomeCoberto||"")+(x.escalaCoberto?" ("+x.escalaCoberto.toLowerCase()+")":"")):"–",x.motivo||"–"]);
       const corSit={"Em cobertura":[30,123,60],"Programado":[20,83,45],"Ocorrência":[148,97,0]};
@@ -871,8 +900,9 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
       tabela("Situações do dia",["Data","Situação","Matrícula","Colaborador (reserva)","Filial","Posto / turno","Titular coberto"].concat(comMotivo?["Motivo"]:[]),mvRows,
         {0:{cellWidth:17,halign:"center"},1:{cellWidth:23},2:{cellWidth:18},4:{cellWidth:12,halign:"center"}},
         {didParseCell:d=>{if(d.section==="body"&&d.column.index===1&&corSit[d.cell.raw]){d.cell.styles.textColor=corSit[d.cell.raw];d.cell.styles.fontStyle="bold"}}});
+      }
       if(typeof doc.putTotalPages==="function")doc.putTotalPages("{total}");
-      doc.save(`Relatorio_Postos_de_Reserva_${hoje}.pdf`);
+      doc.save(modoRes?`Colaboradores_na_Reserva_${hoje}.pdf`:`Relatorio_Postos_de_Reserva_${hoje}.pdf`);
     }catch(e){console.error(e);$("status").textContent="Não foi possível gerar o PDF. Recarregue a página e tente de novo."}
     finally{btn.disabled=false;btn.textContent=txt}
   });
