@@ -423,14 +423,16 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
     const escT=periodo?(COB(s)?escalaDias():escalaCadastro()):"";
     const alterna=escT==="12X36";
     if(fim<ini)return null;
-    const out=[],d=new Date(ini+"T12:00:00"),end=new Date(fim+"T12:00:00"),par=d.getDate()%2;
+    const out=[],d=new Date(ini+"T12:00:00"),end=new Date(fim+"T12:00:00");
     while(d<=end&&out.length<62){
       const dow=d.getDay();
-      if(!(alterna&&d.getDate()%2!==par)&&!(escT==="5X2"&&(dow===0||dow===6)))out.push(isoDe(d));
+      if(!(alterna&&Math.abs(diasEntre(ini,isoDe(d)))%2!==0)&&!(escT==="5X2"&&(dow===0||dow===6)))out.push(isoDe(d));
       d.setDate(d.getDate()+1);
     }
     return out;
   }
+  /* 12x36 = dia sim, dia não contando os dias corridos (vira de par para ímpar na troca de mês) */
+  const diasEntre=(a,b)=>Math.round((Date.UTC(+b.slice(0,4),+b.slice(5,7)-1,+b.slice(8,10))-Date.UTC(+a.slice(0,4),+a.slice(5,7)-1,+a.slice(8,10)))/864e5);
   const escalaDias=()=>$("c_escalaCob").value||$("c_escala").value;
   const PER=s=>COB(s)||s==="ocorrencia";
   /* escala com que o colaborador foi cadastrado na reserva */
@@ -438,14 +440,13 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
   const jaLancado=(mat,iso)=>movs.some(x=>x.matricula===mat&&x.data===iso);
   /* cobertura em escala 12x36: depois de um plantão 12x36 vem um dia de folga.
      Devolve o plantão vizinho que impede o lançamento, ou "" se estiver livre.
-     Virada de 31 para 01 é permitida (regra de dias ímpares). */
+     Conta os dias corridos, inclusive na troca de mês. */
   function conflito12x36(mat,iso){
     if(!mat||escalaDias()!=="12X36")return "";
     const d=new Date(iso+"T12:00:00");
     for(const k of [-1,1]){
       const v=new Date(d);v.setDate(v.getDate()+k);const vi=isoDe(v);
-      const viradaImpar=d.getMonth()!==v.getMonth()&&d.getDate()%2===1&&v.getDate()%2===1;
-      if(!viradaImpar&&movs.some(x=>x.matricula===mat&&x.data===vi&&COB(x.situacao)&&(x.escalaCoberto||x.escala)==="12X36"))return vi;
+      if(movs.some(x=>x.matricula===mat&&x.data===vi&&COB(x.situacao)&&(x.escalaCoberto||x.escala)==="12X36"))return vi;
     }
     return "";
   }
@@ -466,7 +467,7 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
     }).join("");
     const quem=!COB(s)?"do cadastro na reserva":daReserva?"da reserva":"do coberto";
     const semEsc=!COB(s)&&periodo&&!esc?(mat?" Matrícula sem cadastro na reserva: todos os dias do período foram marcados.":" Digite a matrícula para aplicar a escala do colaborador."):"";
-    const regra=semEsc||esc==="12X36"?semEsc||` Seguindo a escala ${quem} (12x36): dias ${new Date($("m_data").value+"T12:00:00").getDate()%2?"ímpares":"pares"}.`:esc==="5X2"?` Seguindo a escala ${quem} (5x2): segunda a sexta.`:esc?` Seguindo a escala ${quem} (${esc.toLowerCase()}): toque nos dias de folga para tirar.`:"";
+    const regra=semEsc||esc==="12X36"?semEsc||` Seguindo a escala ${quem} (12x36): dia sim, dia não a partir de ${fmt($("m_data").value).slice(0,5)}.`:esc==="5X2"?` Seguindo a escala ${quem} (5x2): segunda a sexta.`:esc?` Seguindo a escala ${quem} (${esc.toLowerCase()}): toque nos dias de folga para tirar.`:"";
     $("m_diasInfo").textContent=`${n} ${n===1?"dia será lançado":"dias serão lançados"}.${regra}`+(fut?` ${fut===1?"1 dia é futuro e vai":fut+" dias são futuros e vão"} como Programado.`:"")+(bloq12?` ${bloq12===1?"1 dia bloqueado":bloq12+" dias bloqueados"} por ser folga da escala 12x36 (dia seguinte ou anterior a um plantão já lançado).`:"");
   }
   $("m_dias").addEventListener("click",e=>{const b=e.target.closest(".dia");if(!b||b.disabled)return;const iso=b.dataset.iso;excluidos.has(iso)?excluidos.delete(iso):excluidos.add(iso);atualizarDias()});
@@ -693,7 +694,7 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
         if(!ocupados.has(iso)){
           const g=regime(iso),dow=d.getDay();
           let trabalha=true;
-          if(g.esc==="12X36")trabalha=d.getDate()%2===new Date(g.ancora+"T12:00:00").getDate()%2;
+          if(g.esc==="12X36")trabalha=Math.abs(diasEntre(g.ancora,iso))%2===0;
           else if(g.esc==="5X2")trabalha=dow!==0&&dow!==6;
           if(trabalha){
             const sit=(iso<hoje||(iso===hoje&&iso<ultimo))?"nao_utilizado":"disponivel";
