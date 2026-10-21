@@ -90,6 +90,17 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
 .subtabs button{font:600 13.5px var(--f-display);border:1px solid var(--line);background:var(--bg);color:var(--fg);padding:8px 14px;border-radius:999px;cursor:pointer}
 .subtabs button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
 .status{font-size:13px;color:var(--muted)}
+.multi{position:relative;min-width:0}
+.multi summary{list-style:none;cursor:pointer;font:inherit;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:7px;padding:10px 30px 10px 11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;position:relative}
+.multi summary::-webkit-details-marker{display:none}
+.multi summary::after{content:"";position:absolute;right:12px;top:50%;width:7px;height:7px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:translateY(-70%) rotate(45deg)}
+.multi[open] summary{outline:2px solid var(--accent);border-color:var(--accent)}
+.multi-pop{position:absolute;z-index:20;top:calc(100% + 4px);left:0;width:max-content;max-width:min(360px,calc(100vw - 32px));background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:8px;box-shadow:0 8px 24px rgba(0,0,0,.18);display:flex;flex-direction:column;gap:2px}
+.multi-pop .opt{display:flex;gap:8px;align-items:center;padding:6px 8px;border-radius:6px;cursor:pointer;font-size:13.5px}
+.multi-pop .opt:hover{background:var(--accent-soft)}
+.multi-pop .opt input{width:auto;accent-color:var(--accent)}
+.multi-pop .opt b{font-family:var(--f-mono);font-weight:500}
+.multi-act{display:flex;gap:8px;justify-content:flex-end;padding-top:6px;border-top:1px solid var(--line);margin-top:4px}
 .dias{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
 .dia{font:500 13px var(--f-mono);padding:6px 9px;border-radius:6px;border:1px solid var(--accent);background:var(--accent-soft);color:var(--fg);cursor:pointer}
 .dia[aria-pressed="false"]{background:transparent;border-color:var(--line);color:var(--muted);text-decoration:line-through}
@@ -303,7 +314,11 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
     </div>
     <div class="toolbar">
       <label class="f"><span>Buscar</span><input id="q" placeholder="Matrícula, nome ou posto" autocomplete="off"></label>
-      <label class="f"><span>Filial</span><select id="fFilial"><option value="">Todas</option><option value="0101">0101 - SERVNAC SEGURANCA LTDA</option><option value="0102">0102 - SERVNAC SEGURANCA LTDA RN</option><option value="0103">0103 - SERVNAC SEGURANCA LTDA SP</option><option value="0201">0201 - SERVNAC SOLUCOES CORPORATIVAS</option><option value="0301">0301 - SERVNAC NEGOCIOS LTDA</option><option value="0401">0401 - SERVNAC FACILITIES LTDA</option><option value="0501">0501 - VERDE SEGURANCA DE VALORES LTDA</option><option value="0601">0601 - SERVNAC TERCEIRIZACAO LTDA</option></select></label>
+      <div class="f" id="fFilialWrap"><span style="font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)">Filial</span>
+        <details class="multi" id="fFilial"><summary id="fFilialTxt">Todas</summary>
+          <div class="multi-pop"><label class="opt"><input type="checkbox" class="fFilCk" value="0101"> <b>0101</b> SERVNAC SEGURANCA LTDA</label><label class="opt"><input type="checkbox" class="fFilCk" value="0102"> <b>0102</b> SERVNAC SEGURANCA LTDA RN</label><label class="opt"><input type="checkbox" class="fFilCk" value="0103"> <b>0103</b> SERVNAC SEGURANCA LTDA SP</label><label class="opt"><input type="checkbox" class="fFilCk" value="0201"> <b>0201</b> SERVNAC SOLUCOES CORPORATIVAS</label><label class="opt"><input type="checkbox" class="fFilCk" value="0301"> <b>0301</b> SERVNAC NEGOCIOS LTDA</label><label class="opt"><input type="checkbox" class="fFilCk" value="0401"> <b>0401</b> SERVNAC FACILITIES LTDA</label><label class="opt"><input type="checkbox" class="fFilCk" value="0501"> <b>0501</b> VERDE SEGURANCA DE VALORES LTDA</label><label class="opt"><input type="checkbox" class="fFilCk" value="0601"> <b>0601</b> SERVNAC TERCEIRIZACAO LTDA</label>
+            <div class="multi-act"><button type="button" class="btn ghost small" id="fFilTodas">Todas</button><button type="button" class="btn primary small" id="fFilOk">Aplicar</button></div>
+          </div></details></div>
       <label class="f" id="fStatusWrap"><span>Status</span><select id="fStatus"><option value="ativo">Na reserva</option><option value="saiu">Já saíram</option><option value="">Todos</option></select></label>
       <label class="f" id="fSitWrap" hidden><span>Situação</span><select id="fSit"><option value="">Todas</option><option value="cobertura">Em cobertura</option><option value="programado">Programado</option><option value="disponivel">Disponível</option><option value="nao_utilizado">Não utilizado</option><option value="folga">Folga</option><option value="ocorrencia">Ocorrência</option></select></label>
       <label class="f"><span>De</span><input id="fDe" type="date"></label>
@@ -617,11 +632,19 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
     const b=$("banner");b.hidden=false;b.textContent="Você está com acesso só de leitura: pode consultar os registros, mas não lançar novos."}
 
   /* REGISTROS */
-  ["q","fFilial","fSit","fStatus","fDe","fAte"].forEach(id=>$(id).addEventListener("input",render));
+  ["q","fSit","fStatus","fDe","fAte"].forEach(id=>$(id).addEventListener("input",render));
+  /* filtro de filial com seleção múltipla (nenhuma marcada = todas) */
+  const filiaisSel=()=>[...document.querySelectorAll(".fFilCk:checked")].map(c=>c.value);
+  const filtraFilial=f=>{const sel=filiaisSel();return !sel.length||sel.includes(f)};
+  function textoFiliais(){const sel=filiaisSel();return !sel.length?"Todas":sel.length<=3?sel.join(", "):sel.length+" filiais"}
+  document.querySelectorAll(".fFilCk").forEach(c=>c.addEventListener("change",()=>{$("fFilialTxt").textContent=textoFiliais();render()}));
+  $("fFilTodas").addEventListener("click",()=>{document.querySelectorAll(".fFilCk").forEach(c=>c.checked=false);$("fFilialTxt").textContent="Todas";render()});
+  $("fFilOk").addEventListener("click",()=>{$("fFilial").open=false});
+  document.addEventListener("click",e=>{if($("fFilial").open&&!$("fFilial").contains(e.target))$("fFilial").open=false});
   function filtrar(list,dateField){
-    const q=norm($("q").value),fil=$("fFilial").value,de=$("fDe").value,ate=$("fAte").value,sit=$("fSit").value;
+    const q=norm($("q").value),de=$("fDe").value,ate=$("fAte").value,sit=$("fSit").value;
     return list.filter(x=>{
-      if(fil&&x.filial!==fil)return false;
+      if(!filtraFilial(x.filial))return false;
       if(sub==="mov"&&sit&&x.situacao!==sit)return false;
       const st=$("fStatus").value;
       if(sub==="res"&&st==="ativo"&&x.saidaEfetiva)return false;
@@ -709,7 +732,7 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
   const movsComAuto=()=>movs.concat(gerarAutomaticos());
 
   function linhasPlanilha(){
-    const fil=$("fFilial").value,de=$("fDe").value,ate=$("fAte").value;
+    const de=$("fDe").value,ate=$("fAte").value;
     const usadas=new Set(),out=[];
     const daMat=m=>reservas.filter(r=>r.matricula===m).sort((a,b)=>(b.entrada||"").localeCompare(a.entrada||""));
     movsComAuto().forEach(mv=>{
@@ -721,7 +744,7 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
     reservas.forEach(r=>{if(!usadas.has(r._id))out.push({r,mv:null,ref:r.entrada})});
     return out.filter(({r,mv,ref})=>{
       const f=(r&&r.filial)||(mv&&mv.filial)||"";
-      if(fil&&f!==fil)return false;if(de&&(ref||"")<de)return false;if(ate&&(ref||"")>ate)return false;return true;
+      if(!filtraFilial(f))return false;if(de&&(ref||"")<de)return false;if(ate&&(ref||"")>ate)return false;return true;
     }).sort((a,b)=>{const ma=(a.r||a.mv).matricula,mb=(b.r||b.mv).matricula;return ma.localeCompare(mb,"pt",{numeric:true})||(a.ref||"").localeCompare(b.ref||"")})
     .map(({r,mv})=>{r=r||{};mv=mv||{};return {
       "Matrícula":r.matricula||mv.matricula||"","Nome do colaborador":r.nome||mv.nome||"","Filial":r.filial||mv.filial||"",
@@ -800,7 +823,7 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
     if(!window.JSZip){$("status").textContent="O gerador da planilha não carregou. Recarregue a página e tente de novo.";return}
     btn.disabled=true;const txt=btn.textContent;btn.textContent="Gerando planilha…";
     try{
-      const rows=linhasControle();
+      const rows=linhasControle().filter(x=>filtraFilial(x.C));
       if(rows.length>2000)$("status").textContent=`O modelo comporta 2.000 linhas; ${rows.length-2000} registros mais recentes ficaram de fora.`;
       const mapa={};rows.slice(0,2000).forEach((x,i)=>mapa[14+i]=x);
       btn.textContent="Carregando modelo…";
@@ -841,9 +864,9 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
       const modoRes=sub==="res";
       const subAnt=sub;sub="res";const res=filtrar(reservas,"entrada");sub="mov";const mv=filtrar(movsComAuto(),"data");sub=subAnt;
       const hoje=today(),agora=new Date();
-      const fil=$("fFilial").value,de=$("fDe").value,ate=$("fAte").value,q=$("q").value.trim();
+      const filSel=filiaisSel(),de=$("fDe").value,ate=$("fAte").value,q=$("q").value.trim();
       const stTxt={ativo:"Na reserva",saiu:"Já saíram","":"Todos"}[$("fStatus").value];
-      const filtroTxt=(modoRes?["Status: "+stTxt]:[]).concat(["Filial: "+(fil?fil+" · "+(FILIAIS[fil]||""):"Todas"),"Período: "+(de||ate?(de?fmt(de):"início")+" a "+(ate?fmt(ate):"hoje"):"Todo o histórico")].concat(q?["Busca: "+q]:[])).join("   |   ");
+      const filtroTxt=(modoRes?["Status: "+stTxt]:[]).concat([(filSel.length?(filSel.length>1?"Filiais: ":"Filial: ")+filSel.map(f=>filSel.length>2?f:f+" · "+(FILIAIS[f]||"")).join(", "):"Filial: Todas"),"Período: "+(de||ate?(de?fmt(de):"início")+" a "+(ate?fmt(ate):"hoje"):"Todo o histórico")].concat(q?["Busca: "+q]:[])).join("   |   ");
       const logo=await logoDataUrl();
       const {jsPDF}=window.jspdf;const doc=new jsPDF({orientation:"landscape",unit:"mm",format:"a4"});
       const W=doc.internal.pageSize.getWidth(),H=doc.internal.pageSize.getHeight(),M=12;
