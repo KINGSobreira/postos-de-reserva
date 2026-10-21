@@ -90,6 +90,13 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
 .subtabs button{font:600 13.5px var(--f-display);border:1px solid var(--line);background:var(--bg);color:var(--fg);padding:8px 14px;border-radius:999px;cursor:pointer}
 .subtabs button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
 .status{font-size:13px;color:var(--muted)}
+.sug-box{position:relative}
+.sug{position:absolute;z-index:25;top:calc(100% + 4px);left:0;right:0;background:var(--surface);border:1px solid var(--line);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.18);padding:4px;max-height:280px;overflow-y:auto}
+.sug button{display:flex;flex-direction:column;align-items:flex-start;gap:1px;width:100%;text-align:left;font:inherit;color:var(--fg);background:transparent;border:0;border-radius:6px;padding:7px 9px;cursor:pointer}
+.sug button:hover,.sug button[aria-selected="true"]{background:var(--accent-soft)}
+.sug button b{font-weight:600;font-size:13.5px}
+.sug button small{font-size:12px;color:var(--muted);font-family:var(--f-mono)}
+.sug .vazio{padding:8px 9px;font-size:13px;color:var(--muted)}
 .multi{position:relative;min-width:0}
 .multi summary{list-style:none;cursor:pointer;font:inherit;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:7px;padding:10px 30px 10px 11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;position:relative}
 .multi summary::-webkit-details-marker{display:none}
@@ -179,7 +186,7 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
   <!-- SITUAÇÃO DO DIA -->
   <section class="panel" id="view-mov" hidden>
     <h2>Situação do dia</h2>
-    <p class="lead">Registre o que o colaborador da reserva fez no dia. Ao digitar a matrícula de quem já está cadastrado na reserva, nome, filial, função e escala são preenchidos sozinhos.</p>
+    <p class="lead">Registre o que o colaborador da reserva fez no dia. Comece a digitar a matrícula ou o nome e escolha o colaborador na lista: filial, função, escala e turno são preenchidos sozinhos.</p>
     <form id="formMov" novalidate>
       <div class="seg" role="radiogroup" aria-label="Situação do dia">
         <label><input type="radio" name="situacao" id="s_cob" value="cobertura" checked> Em cobertura</label>
@@ -189,8 +196,8 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
       </div>
 
       <div class="grid">
-        <label class="f"><span>Matrícula <em>*</em></span><input id="m_mat" list="listaReserva" inputmode="numeric" autocomplete="off" required></label>
-        <label class="f"><span>Nome do colaborador (na reserva) <em>*</em></span><input id="m_nome" autocomplete="off" required></label>
+        <label class="f sug-box"><span>Matrícula <em>*</em></span><input id="m_mat" inputmode="numeric" autocomplete="off" required placeholder="Digite matrícula ou nome" aria-autocomplete="list" aria-controls="m_matSug"><div class="sug" id="m_matSug" role="listbox" hidden></div></label>
+        <label class="f sug-box"><span>Nome do colaborador (na reserva) <em>*</em></span><input id="m_nome" autocomplete="off" required placeholder="Digite nome ou matrícula" aria-autocomplete="list" aria-controls="m_nomeSug"><div class="sug" id="m_nomeSug" role="listbox" hidden></div></label>
         <label class="f"><span><span id="m_dataLbl">Data (início)</span> <em>*</em></span><input id="m_data" type="date" required></label>
         <label class="f" id="m_ateWrap"><span>Até (opcional, para um período)</span><input id="m_ate" type="date"></label>
         <div class="hint full" id="m_found"></div>
@@ -522,7 +529,35 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
     excluidos.clear();atualizarDias();
   }
   $("m_mat").addEventListener("change",preencherPorMatricula);
-  $("m_mat").addEventListener("blur",preencherPorMatricula);
+  $("m_mat").addEventListener("blur",()=>setTimeout(preencherPorMatricula,150));
+  /* sugestões de colaboradores cadastrados na reserva, ao digitar matrícula ou nome */
+  function sugestoes(inputId,boxId){
+    const inp=$(inputId),box=$(boxId);let itens=[],ativo=-1;
+    const fechar=()=>{box.hidden=true;ativo=-1;inp.setAttribute("aria-expanded","false")};
+    const escolher=r=>{$("m_mat").value=r.matricula;$("m_nome").value=r.nome;fechar();preencherPorMatricula()};
+    const desenhar=()=>{
+      const t=norm(inp.value.trim());
+      const base=[...new Map(ativas().map(r=>[r.matricula,r])).values()];
+      itens=(t?base.filter(r=>norm(r.matricula).includes(t)||norm(r.nome).includes(t)):base)
+        .sort((a,b)=>(norm(a.nome).startsWith(t)||String(a.matricula).startsWith(t)?0:1)-(norm(b.nome).startsWith(t)||String(b.matricula).startsWith(t)?0:1)||String(a.nome).localeCompare(String(b.nome),"pt")).slice(0,8);
+      if(!base.length){fechar();return}
+      box.innerHTML=itens.length?itens.map((r,i)=>`<button type="button" role="option" data-i="${i}" aria-selected="${i===ativo}"><b>${esc(r.nome)}</b><small>${esc(r.matricula)} · filial ${esc(r.filial)} · ${esc(r.escala||"")}${r.turno?" · "+esc(r.turno):""}</small></button>`).join(""):`<div class="vazio">Nenhum colaborador na reserva com esse nome ou matrícula.</div>`;
+      box.hidden=false;inp.setAttribute("aria-expanded","true");
+    };
+    inp.addEventListener("input",()=>{ativo=-1;desenhar()});
+    inp.addEventListener("focus",()=>{if(inp.value.trim())desenhar()});
+    inp.addEventListener("keydown",e=>{
+      if(box.hidden||!itens.length)return;
+      if(e.key==="ArrowDown"){e.preventDefault();ativo=(ativo+1)%itens.length;desenhar()}
+      else if(e.key==="ArrowUp"){e.preventDefault();ativo=(ativo-1+itens.length)%itens.length;desenhar()}
+      else if(e.key==="Enter"&&ativo>=0){e.preventDefault();escolher(itens[ativo])}
+      else if(e.key==="Escape")fechar();
+    });
+    box.addEventListener("mousedown",e=>e.preventDefault());
+    box.addEventListener("click",e=>{const b=e.target.closest("button[data-i]");if(b)escolher(itens[+b.dataset.i])});
+    inp.addEventListener("blur",()=>setTimeout(fechar,120));
+  }
+  sugestoes("m_mat","m_matSug");sugestoes("m_nome","m_nomeSug");
   function limparMov(){
     ["m_mat","m_nome","m_ate","c_filial","c_funcao","c_funcaoOutra","c_escala","c_turno","c_local","c_mat2","c_nome2","c_escalaCob","c_hIni","c_hFim","c_motivo","c_motivoOutro","n_motivo","o_motivo"].forEach(id=>{$(id).value="";$(id).removeAttribute("aria-invalid")});
     document.querySelectorAll('input[name="c_intra"]').forEach(r=>r.checked=false);$("c_intraGrp").style.outline="";
