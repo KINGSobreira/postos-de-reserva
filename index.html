@@ -154,6 +154,12 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
         <label class="f"><span>Tipo de reserva <em>*</em></span>
           <select id="r_tipo" name="tipo" required><option value="">Selecione</option><option>Transitória</option><option>Permanente</option><option value="POSTO">Reserva de posto</option></select></label>
         <label class="f" id="r_tipoPostoWrap" hidden><span>Qual posto? <em>*</em></span><input id="r_tipoPosto" autocomplete="off" placeholder="Ex.: UNIMED"><span class="hint">Reserva para cobrir furos deste posto. Fica registrado como RESERVA DE POSTO - NOME DO POSTO.</span></label>
+        <div class="f" id="r_contratoWrap" hidden><span style="font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)">Reserva prevista em contrato? <em style="font-style:normal;color:var(--danger)">*</em></span>
+          <div class="seg" id="r_contratoGrp" role="radiogroup" aria-label="Reserva prevista em contrato" style="margin:0">
+            <label><input type="radio" name="r_contrato" id="r_contratoSim" value="SIM"> Sim</label>
+            <label><input type="radio" name="r_contrato" id="r_contratoNao" value="NÃO"> Não</label>
+          </div>
+          <span class="hint">Marque Sim quando o cliente paga por essa reserva no contrato.</span></div>
         <label class="f full"><span>Motivo da entrada <em>*</em></span>
           <select id="r_motivo" name="motivo" required><option value="">Selecione</option><option>Reserva permanente</option><option>Retorno de afastamento</option><option>Fim de contrato</option><option>Aguardando posto fixo</option><option>Aguardando desligamento</option><option>Devolvido pelo cliente</option><option>Outro</option></select></label>
         <label class="f full" id="r_outroWrap" hidden><span>Descreva o motivo <em>*</em></span><input id="r_outro" name="motivoOutro" autocomplete="off"></label>
@@ -401,20 +407,24 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
   /* ENTRADA NA RESERVA */
   $("r_entrada").value=today();
   $("r_motivo").addEventListener("change",()=>{$("r_outroWrap").hidden=$("r_motivo").value!=="Outro"});
-  $("r_tipo").addEventListener("change",()=>{$("r_tipoPostoWrap").hidden=$("r_tipo").value!=="POSTO"});
-  $("formReserva").addEventListener("reset",()=>setTimeout(()=>{$("r_outroWrap").hidden=true;$("r_tipoPostoWrap").hidden=true;$("r_funcaoOutraWrap").hidden=true;$("r_entrada").value=today();document.querySelectorAll("#formReserva [aria-invalid]").forEach(e=>e.removeAttribute("aria-invalid"))}));
+  $("r_tipo").addEventListener("change",()=>{const p=$("r_tipo").value!=="POSTO";$("r_tipoPostoWrap").hidden=p;$("r_contratoWrap").hidden=p});
+  const contratoSel=()=>(document.querySelector('input[name="r_contrato"]:checked')||{}).value||"";
+  $("formReserva").addEventListener("reset",()=>setTimeout(()=>{$("r_outroWrap").hidden=true;$("r_tipoPostoWrap").hidden=true;$("r_contratoWrap").hidden=true;$("r_contratoGrp").style.outline="";$("r_funcaoOutraWrap").hidden=true;$("r_entrada").value=today();document.querySelectorAll("#formReserva [aria-invalid]").forEach(e=>e.removeAttribute("aria-invalid"))}));
   $("formReserva").addEventListener("submit",async e=>{
     e.preventDefault();
     const req=["r_mat","r_nome","r_filial","r_funcao","r_escala","r_turno","r_tipo","r_motivo","r_entrada"];
     let bad=false;req.forEach(id=>{if(mark($(id),!$(id).value.trim()))bad=true});
     if($("r_funcao").value==="OUTRA"&&mark($("r_funcaoOutra"),!$("r_funcaoOutra").value.trim()))bad=true;
     if($("r_tipo").value==="POSTO"&&mark($("r_tipoPosto"),!$("r_tipoPosto").value.trim()))bad=true;
+    const faltaContrato=$("r_tipo").value==="POSTO"&&!contratoSel();
+    $("r_contratoGrp").style.outline=faltaContrato?"2px solid var(--danger)":"";$("r_contratoGrp").style.borderRadius="999px";
+    if(faltaContrato)bad=true;
     if($("r_motivo").value==="Outro"&&mark($("r_outro"),!$("r_outro").value.trim()))bad=true;
     if(bad)return showMsg($("r_msg"),"err","Preencha os campos obrigatórios destacados.");
     if($("r_saida").value&&$("r_saida").value<$("r_entrada").value){mark($("r_saida"),true);return showMsg($("r_msg"),"err","A previsão de saída não pode ser antes da entrada.")}
     mark($("r_saida"),false);
     if(!db)return showMsg($("r_msg"),"err","Sem conexão com a planilha. Verifique a internet e tente de novo.");
-    const doc={matricula:$("r_mat").value.trim(),nome:$("r_nome").value.trim().toUpperCase(),filial:$("r_filial").value,funcao:valorFuncao("r"),escala:$("r_escala").value,turno:$("r_turno").value,tipo:$("r_tipo").value==="POSTO"?"RESERVA DE POSTO - "+$("r_tipoPosto").value.trim().toUpperCase():$("r_tipo").value,motivo:$("r_motivo").value,motivoOutro:$("r_motivo").value==="Outro"?$("r_outro").value.trim():"",entrada:$("r_entrada").value,previsaoSaida:$("r_saida").value||"",criadoPor:uid||"",criadoEm:new Date().toISOString()};
+    const doc={matricula:$("r_mat").value.trim(),nome:$("r_nome").value.trim().toUpperCase(),filial:$("r_filial").value,funcao:valorFuncao("r"),escala:$("r_escala").value,turno:$("r_turno").value,tipo:$("r_tipo").value==="POSTO"?"RESERVA DE POSTO - "+$("r_tipoPosto").value.trim().toUpperCase():$("r_tipo").value,previstaContrato:$("r_tipo").value==="POSTO"?contratoSel():"",motivo:$("r_motivo").value,motivoOutro:$("r_motivo").value==="Outro"?$("r_outro").value.trim():"",entrada:$("r_entrada").value,previsaoSaida:$("r_saida").value||"",criadoPor:uid||"",criadoEm:new Date().toISOString()};
     $("r_submit").disabled=true;
     try{await apiPost({action:"addReserva",data:doc});$("formReserva").reset();showMsg($("r_msg"),"ok",`Entrada de ${doc.nome} registrada.`)}
     catch(err){showMsg($("r_msg"),"err",errText(err))}
@@ -664,7 +674,7 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
       const venc=atv.filter(x=>x.previsaoSaida&&x.previsaoSaida<hoje).length;
       $("counts").innerHTML=`<span class="chip">${atv.length} na reserva</span><span class="chip gray">${atv.filter(x=>x.tipo==="Transitória").length} transitória</span><span class="chip gray">${atv.filter(x=>x.tipo==="Permanente").length} permanente</span>${atv.some(x=>String(x.tipo).startsWith("RESERVA DE POSTO"))?`<span class="chip gray">${atv.filter(x=>String(x.tipo).startsWith("RESERVA DE POSTO")).length} reserva de posto</span>`:""}${rows.length-atv.length?`<span class="chip gray">${rows.length-atv.length} já saíram</span>`:""}${venc?`<span class="chip red">${venc} com previsão de saída vencida</span>`:""}`;
       thead.innerHTML="<tr><th>Matrícula</th><th>Nome</th><th>Filial</th><th>Função</th><th>Escala</th><th>Tipo</th><th>Motivo da entrada</th><th>Entrada</th><th>Prev. saída</th><th>Saída efetiva</th><th></th></tr>";
-      tbody.innerHTML=rows.length?rows.map(x=>`<tr><td class="mono">${esc(x.matricula)}</td><td>${esc(x.nome)}</td><td class="mono" title="${esc(FILIAIS[x.filial]||"")}">${esc(x.filial)}</td><td>${esc(x.funcao)}</td><td class="mono">${esc(x.escala)}${x.turno?`<br><span class="hint">${esc(x.turno)}</span>`:""}</td><td>${esc(x.tipo)}</td><td>${esc(x.motivo)}${x.motivoOutro?`: ${esc(x.motivoOutro)}`:""}</td><td class="mono">${fmt(x.entrada)}</td><td class="mono">${x.previsaoSaida?`<span class="${!x.saidaEfetiva&&x.previsaoSaida<hoje?"chip red":""}">${fmt(x.previsaoSaida)}</span>`:"—"}</td><td>${x.saidaEfetiva?`<span class="mono">${fmt(x.saidaEfetiva)}</span><br><span class="hint">${esc(x.motivoSaida)}${detalheSaida(x)?" · "+esc(detalheSaida(x)):""}</span>`:"—"}</td><td>${podeExcluir(x)?`<button class="btn danger small" data-del="reservas/${esc(x._id)}">Excluir</button>`:""}</td></tr>`).join("")
+      tbody.innerHTML=rows.length?rows.map(x=>`<tr><td class="mono">${esc(x.matricula)}</td><td>${esc(x.nome)}</td><td class="mono" title="${esc(FILIAIS[x.filial]||"")}">${esc(x.filial)}</td><td>${esc(x.funcao)}</td><td class="mono">${esc(x.escala)}${x.turno?`<br><span class="hint">${esc(x.turno)}</span>`:""}</td><td>${esc(x.tipo)}${x.previstaContrato?`<br><span class="hint">Prevista em contrato: ${esc(x.previstaContrato)}</span>`:""}</td><td>${esc(x.motivo)}${x.motivoOutro?`: ${esc(x.motivoOutro)}`:""}</td><td class="mono">${fmt(x.entrada)}</td><td class="mono">${x.previsaoSaida?`<span class="${!x.saidaEfetiva&&x.previsaoSaida<hoje?"chip red":""}">${fmt(x.previsaoSaida)}</span>`:"—"}</td><td>${x.saidaEfetiva?`<span class="mono">${fmt(x.saidaEfetiva)}</span><br><span class="hint">${esc(x.motivoSaida)}${detalheSaida(x)?" · "+esc(detalheSaida(x)):""}</span>`:"—"}</td><td>${podeExcluir(x)?`<button class="btn danger small" data-del="reservas/${esc(x._id)}">Excluir</button>`:""}</td></tr>`).join("")
         :`<tr><td colspan="11" class="empty">${db?"Nenhum colaborador com esses filtros. Os registros feitos na aba Entrada na reserva aparecem aqui.":"Carregando registros…"}</td></tr>`;
     }else{
       const rows=filtrar(movs,"data").sort((a,b)=>(b.data||"").localeCompare(a.data||"")||(b.criadoEm||"").localeCompare(a.criadoEm||""));
@@ -754,11 +764,11 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
       "Data do Registro":dt(mv.data),"Situação do dia":mv.situacao?SIT[mv.situacao]:"",
       "Local da cobertura":mv.local||"","Matrícula do titular":mv.matCoberto||""}});
   }
-  const COLS_RES=["Matrícula","Nome do colaborador","Filial","Função","Escala","Turno","Tipo de reserva","Motivo da entrada","Entrada na reserva","Previsão de saída","Status","Saída efetiva","Motivo da saída","Detalhe da saída"];
+  const COLS_RES=["Matrícula","Nome do colaborador","Filial","Função","Escala","Turno","Tipo de reserva","Prevista em contrato","Motivo da entrada","Entrada na reserva","Previsão de saída","Status","Saída efetiva","Motivo da saída","Detalhe da saída"];
   function linhasReserva(){
     return filtrar(reservas,"entrada").slice().sort((a,b)=>(a.saidaEfetiva?1:0)-(b.saidaEfetiva?1:0)||String(a.matricula).localeCompare(String(b.matricula),"pt",{numeric:true})).map(x=>({
       "Matrícula":x.matricula,"Nome do colaborador":x.nome,"Filial":x.filial,"Função":x.funcao,"Escala":x.escala,"Turno":x.turno||"",
-      "Tipo de reserva":x.tipo,"Motivo da entrada":x.motivo+(x.motivoOutro?": "+x.motivoOutro:""),
+      "Tipo de reserva":x.tipo,"Prevista em contrato":x.previstaContrato||"","Motivo da entrada":x.motivo+(x.motivoOutro?": "+x.motivoOutro:""),
       "Entrada na reserva":dt(x.entrada),"Previsão de saída":dt(x.previsaoSaida),
       "Status":x.saidaEfetiva?"Saiu":(x.previsaoSaida&&x.previsaoSaida<today()?"Na reserva (previsão vencida)":"Na reserva"),
       "Saída efetiva":dt(x.saidaEfetiva),"Motivo da saída":x.motivoSaida||"","Detalhe da saída":x.saidaEfetiva?detalheSaida(x):""}));
@@ -767,7 +777,7 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
     if(!window.XLSX){$("status").textContent="O gerador de planilha não carregou. Recarregue a página e tente de novo.";return}
     if(sub==="res"){
       const ws=XLSX.utils.json_to_sheet(linhasReserva(),{header:COLS_RES,cellDates:true,dateNF:"dd/mm/yyyy"});
-      ws["!cols"]=[10,34,8,22,8,10,30,26,14,14,26,14,20,40].map(w=>({wch:w}));
+      ws["!cols"]=[10,34,8,22,8,10,30,12,26,14,14,26,14,20,40].map(w=>({wch:w}));
       const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,"Colaboradores na reserva");
       XLSX.writeFile(wb,`colaboradores_na_reserva_${today()}.xlsx`,{cellDates:true});
       return;
@@ -927,7 +937,7 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
       /* colaboradores na reserva */
       const resOrd=res.slice().sort((a,b)=>(a.saidaEfetiva?1:0)-(b.saidaEfetiva?1:0)||(b.entrada||"").localeCompare(a.entrada||""));
       const resRows=resOrd.map(x=>[
-        x.matricula,x.nome,x.filial,tituloCaso(x.funcao),String(x.escala||"").toLowerCase()+(x.turno?"\n"+x.turno.toLowerCase():""),x.tipo,x.motivo+(x.motivoOutro?": "+x.motivoOutro:""),fmt(x.entrada),x.previsaoSaida?fmt(x.previsaoSaida):"–",
+        x.matricula,x.nome,x.filial,tituloCaso(x.funcao),String(x.escala||"").toLowerCase()+(x.turno?"\n"+x.turno.toLowerCase():""),x.tipo+(x.previstaContrato?"\nPrevista em contrato: "+x.previstaContrato:""),x.motivo+(x.motivoOutro?": "+x.motivoOutro:""),fmt(x.entrada),x.previsaoSaida?fmt(x.previsaoSaida):"–",
         x.saidaEfetiva?fmt(x.saidaEfetiva)+" · "+x.motivoSaida+(detalheSaida(x)?" ("+detalheSaida(x)+")":""):"Na reserva"]);
       tabela("Colaboradores na reserva",["Matrícula","Colaborador","Filial","Função","Escala","Tipo","Motivo da entrada","Entrada","Prev. saída","Saída"],resRows,
         {0:{cellWidth:18},2:{cellWidth:12,halign:"center"},4:{cellWidth:13,halign:"center"},7:{cellWidth:17,halign:"center"},8:{cellWidth:17,halign:"center"}},
