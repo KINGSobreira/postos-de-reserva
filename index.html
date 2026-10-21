@@ -191,6 +191,7 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
       <div class="seg" role="radiogroup" aria-label="Situação do dia">
         <label><input type="radio" name="situacao" id="s_cob" value="cobertura" checked> Em cobertura</label>
         <label><input type="radio" name="situacao" id="s_prog" value="programado"> Programado</label>
+        <label><input type="radio" name="situacao" id="s_dposto" value="disponivel_posto"> Disponível no posto</label>
         <label><input type="radio" name="situacao" id="s_folga" value="folga"> Folga</label>
         <label><input type="radio" name="situacao" id="s_oc" value="ocorrencia"> Ocorrência</label>
       </div>
@@ -246,6 +247,12 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
         </div>
       </div>
 
+      <div class="sub" id="blk-disponivel_posto" hidden>
+        <h3>Disponível no posto</h3>
+        <div class="grid">
+          <label class="f full"><span>Posto <em>*</em></span><input id="d_posto" autocomplete="off"><span class="hint" id="d_postoHint">Preenchido com o posto da reserva de posto do cadastro. Pode ser alterado.</span></label>
+        </div>
+      </div>
       <div class="sub" id="blk-ocorrencia" hidden>
         <h3>Ocorrência</h3>
         <div class="grid">
@@ -333,7 +340,7 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
             <div class="multi-act"><button type="button" class="btn ghost small" id="fFilTodas">Todas</button><button type="button" class="btn primary small" id="fFilOk">Aplicar</button></div>
           </div></details></div>
       <label class="f" id="fStatusWrap"><span>Status</span><select id="fStatus"><option value="ativo">Na reserva</option><option value="saiu">Já saíram</option><option value="">Todos</option></select></label>
-      <label class="f" id="fSitWrap" hidden><span>Situação</span><select id="fSit"><option value="">Todas</option><option value="cobertura">Em cobertura</option><option value="programado">Programado</option><option value="disponivel">Disponível</option><option value="nao_utilizado">Não utilizado</option><option value="folga">Folga</option><option value="ocorrencia">Ocorrência</option></select></label>
+      <label class="f" id="fSitWrap" hidden><span>Situação</span><select id="fSit"><option value="">Todas</option><option value="cobertura">Em cobertura</option><option value="programado">Programado</option><option value="disponivel">Disponível</option><option value="nao_utilizado">Não utilizado</option><option value="disponivel_posto">Disponível no posto</option><option value="folga">Folga</option><option value="ocorrencia">Ocorrência</option></select></label>
       <label class="f"><span>De</span><input id="fDe" type="date"></label>
       <label class="f"><span>Até</span><input id="fAte" type="date"></label>
       <button class="btn ghost" type="button" id="btnXlsx">Baixar planilha Excel</button>
@@ -370,7 +377,7 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
     }
   }
   const FILIAIS={"0101":"SERVNAC SEGURANCA LTDA","0102":"SERVNAC SEGURANCA LTDA RN","0103":"SERVNAC SEGURANCA LTDA SP","0201":"SERVNAC SOLUCOES CORPORATIVAS","0301":"SERVNAC NEGOCIOS LTDA","0401":"SERVNAC FACILITIES LTDA","0501":"VERDE SEGURANCA DE VALORES LTDA","0601":"SERVNAC TERCEIRIZACAO LTDA"};
-  const SIT={cobertura:"Em cobertura",programado:"Programado",disponivel:"Disponível",nao_utilizado:"Não utilizado",folga:"Folga",ocorrencia:"Ocorrência"};
+  const SIT={cobertura:"Em cobertura",programado:"Programado",disponivel:"Disponível",nao_utilizado:"Não utilizado",folga:"Folga",ocorrencia:"Ocorrência",disponivel_posto:"Disponível no posto"};
   let db=null,user=null,uid=null,downloads=null,canAdmin=false,readOnly=false;
   let reservas=[],movs=[],sub="res";
 
@@ -466,7 +473,14 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
   /* 12x36 = dia sim, dia não contando os dias corridos (vira de par para ímpar na troca de mês) */
   const diasEntre=(a,b)=>Math.round((Date.UTC(+b.slice(0,4),+b.slice(5,7)-1,+b.slice(8,10))-Date.UTC(+a.slice(0,4),+a.slice(5,7)-1,+a.slice(8,10)))/864e5);
   const escalaDias=()=>$("c_escalaCob").value||$("c_escala").value;
-  const PER=s=>COB(s)||s==="ocorrencia";
+  const PER=s=>COB(s)||s==="ocorrencia"||s==="disponivel_posto";
+  const postoDaReserva=r=>{const m=/^RESERVA DE POSTO - (.+)$/.exec(String((r&&r.tipo)||""));return m?m[1].trim():""};
+  $("d_posto").addEventListener("input",()=>{$("d_posto").dataset.editado="1"});
+  function preencherPosto(){
+    const m=$("m_mat").value.trim(),r=m&&(ultimaReserva(m,true)||ultimaReserva(m,false)),p=postoDaReserva(r);
+    if(p&&!$("d_posto").dataset.editado)$("d_posto").value=p;
+    $("d_postoHint").textContent=p?`Posto da reserva de posto do cadastro: ${p}${r.previstaContrato==="SIM"?" (prevista em contrato)":""}. Pode ser alterado.`:(m?"Esse colaborador não está cadastrado como reserva de posto. Informe o posto.":"Escolha o colaborador para puxar o posto do cadastro.");
+  }
   /* escala com que o colaborador foi cadastrado na reserva */
   const escalaCadastro=()=>{const m=$("m_mat").value.trim(),r=m&&(ultimaReserva(m,true)||ultimaReserva(m,false));return r?r.escala:""};
   const jaLancado=(mat,iso)=>movs.some(x=>x.matricula===mat&&x.data===iso);
@@ -513,7 +527,8 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
   ["c_turno","c_escalaCob"].forEach(id=>$(id).addEventListener("change",sugerirHorario));
   function trocarSituacao(){
     const s=sitAtual();
-    $("blk-cobertura").hidden=!COB(s);$("blk-nao_utilizado").hidden=s!=="nao_utilizado";$("blk-ocorrencia").hidden=s!=="ocorrencia";
+    $("blk-cobertura").hidden=!COB(s);$("blk-nao_utilizado").hidden=s!=="nao_utilizado";$("blk-ocorrencia").hidden=s!=="ocorrencia";$("blk-disponivel_posto").hidden=s!=="disponivel_posto";
+    if(s==="disponivel_posto")preencherPosto();
     $("m_ateWrap").hidden=!PER(s);$("m_dataLbl").textContent=PER(s)?"Data (início)":"Data";
     $("c_titulo").textContent=s==="programado"?"Programado":"Em cobertura";
     excluidos.clear();atualizarDias();
@@ -526,6 +541,7 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
     const r=ultimaReserva(m,true)||ultimaReserva(m,false);
     if(r){$("m_nome").value=r.nome;$("c_filial").value=r.filial;setFuncao("c",r.funcao);$("c_escala").value=r.escala;if(r.turno)$("c_turno").value=r.turno;$("m_found").textContent=`Na reserva desde ${fmt(r.entrada)} · filial ${r.filial} · escala cadastrada: ${r.escala||"—"}${r.turno?" · "+r.turno:""}`}
     else $("m_found").textContent=m?"Matrícula não encontrada na reserva. Preencha os dados manualmente.":"";
+    delete $("d_posto").dataset.editado;$("d_posto").value="";preencherPosto();
     excluidos.clear();atualizarDias();
   }
   $("m_mat").addEventListener("change",preencherPorMatricula);
@@ -559,7 +575,7 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
   }
   sugestoes("m_mat","m_matSug");sugestoes("m_nome","m_nomeSug");
   function limparMov(){
-    ["m_mat","m_nome","m_ate","c_filial","c_funcao","c_funcaoOutra","c_escala","c_turno","c_local","c_mat2","c_nome2","c_escalaCob","c_hIni","c_hFim","c_motivo","c_motivoOutro","n_motivo","o_motivo"].forEach(id=>{$(id).value="";$(id).removeAttribute("aria-invalid")});
+    ["m_mat","m_nome","m_ate","c_filial","c_funcao","c_funcaoOutra","c_escala","c_turno","c_local","c_mat2","c_nome2","c_escalaCob","c_hIni","c_hFim","c_motivo","c_motivoOutro","n_motivo","o_motivo","d_posto"].forEach(id=>{$(id).value="";$(id).removeAttribute("aria-invalid")});
     document.querySelectorAll('input[name="c_intra"]').forEach(r=>r.checked=false);$("c_intraGrp").style.outline="";
     $("m_data").value=today();$("m_found").textContent="";$("c_funcaoOutraWrap").hidden=true;$("c_motivoOutroWrap").hidden=true;excluidos.clear();atualizarDias();
   }
@@ -567,7 +583,7 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
   $("formMov").addEventListener("submit",async e=>{
     e.preventDefault();
     const s=sitAtual();
-    const req=COB(s)?["c_filial","c_funcao","c_escala","c_turno","c_local","c_mat2","c_nome2","c_escalaCob","c_motivo"]:({nao_utilizado:["n_motivo"],ocorrencia:["o_motivo"]}[s]||[]);
+    const req=COB(s)?["c_filial","c_funcao","c_escala","c_turno","c_local","c_mat2","c_nome2","c_escalaCob","c_motivo"]:({nao_utilizado:["n_motivo"],ocorrencia:["o_motivo"],disponivel_posto:["d_posto"]}[s]||[]);
     let bad=false;["m_mat","m_nome","m_data",...req].forEach(id=>{if(mark($(id),!$(id).value.trim()))bad=true});
     if(COB(s)&&$("c_funcao").value==="OUTRA"&&mark($("c_funcaoOutra"),!$("c_funcaoOutra").value.trim()))bad=true;
     if(COB(s)&&$("c_motivo").value==="OUTRO"&&mark($("c_motivoOutro"),!$("c_motivoOutro").value.trim()))bad=true;
@@ -594,7 +610,7 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
     const regs=dias.map(iso=>{
       const b={situacao:(s==="cobertura"&&iso>hoje)?"programado":s,matricula:mat,nome:$("m_nome").value.trim().toUpperCase(),data:iso,criadoPor:uid||"",criadoEm:agora};
       if(COB(s))Object.assign(b,{filial:$("c_filial").value,funcao:valorFuncao("c"),escala:$("c_escala").value,turno:$("c_turno").value,local:$("c_local").value.trim().toUpperCase(),matCoberto:$("c_mat2").value.trim(),nomeCoberto:$("c_nome2").value.trim().toUpperCase(),escalaCoberto:$("c_escalaCob").value,intrajornada:intra,horario:fmtHora($("c_hIni").value,$("c_hFim").value),motivo:$("c_motivo").value==="OUTRO"?$("c_motivoOutro").value.trim().toUpperCase():$("c_motivo").value});
-      else{b.filial=r?r.filial:"";b.funcao=r?r.funcao:"";b.escala=r?r.escala:"";b.motivo=s==="ocorrencia"?$("o_motivo").value:s==="nao_utilizado"?$("n_motivo").value.trim():""}
+      else{b.filial=r?r.filial:"";b.funcao=r?r.funcao:"";b.escala=r?r.escala:"";b.motivo=s==="ocorrencia"?$("o_motivo").value:s==="nao_utilizado"?$("n_motivo").value.trim():"";if(s==="disponivel_posto")b.local=$("d_posto").value.trim().toUpperCase()}
       return b;
     });
     $("m_submit").disabled=true;
@@ -945,7 +961,7 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
       const ativos=res.filter(x=>!x.saidaEfetiva);
       const cont=k=>mv.filter(x=>x.situacao===k).length;
       const ehPosto=x=>String(x.tipo).startsWith("RESERVA DE POSTO");
-      const cards=modoRes?[["Na reserva",ativos.length],["Transitória",ativos.filter(x=>x.tipo==="Transitória").length],["Permanente",ativos.filter(x=>x.tipo==="Permanente").length],["Reserva de posto",ativos.filter(ehPosto).length],["Já saíram",res.length-ativos.length],["Prev. saída vencida",ativos.filter(x=>x.previsaoSaida&&x.previsaoSaida<hoje).length]]:[["Na reserva",ativos.length],["Em cobertura",cont("cobertura")],["Programado",cont("programado")],["Disponível",cont("disponivel")],["Não utilizado",cont("nao_utilizado")],["Folga",cont("folga")],["Ocorrência",cont("ocorrencia")],["Prev. saída vencida",ativos.filter(x=>x.previsaoSaida&&x.previsaoSaida<hoje).length]];
+      const cards=modoRes?[["Na reserva",ativos.length],["Transitória",ativos.filter(x=>x.tipo==="Transitória").length],["Permanente",ativos.filter(x=>x.tipo==="Permanente").length],["Reserva de posto",ativos.filter(ehPosto).length],["Já saíram",res.length-ativos.length],["Prev. saída vencida",ativos.filter(x=>x.previsaoSaida&&x.previsaoSaida<hoje).length]]:[["Na reserva",ativos.length],["Em cobertura",cont("cobertura")],["Programado",cont("programado")],["Disp. no posto",cont("disponivel_posto")],["Disponível",cont("disponivel")],["Não utilizado",cont("nao_utilizado")],["Folga",cont("folga")],["Ocorrência",cont("ocorrencia")],["Prev. saída vencida",ativos.filter(x=>x.previsaoSaida&&x.previsaoSaida<hoje).length]];
       const gap=3,cw=(W-2*M-gap*(cards.length-1))/cards.length;
       cards.forEach(([rot,val],i)=>{
         const x=M+i*(cw+gap),destaque=i===0;
@@ -960,14 +976,14 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
       /* resumo por colaborador */
       const porMat={};
       mv.forEach(x=>{const k=x.matricula;(porMat[k]=porMat[k]||{nome:x.nome,filial:x.filial,escala:x.escala,c:{}}).c[x.situacao]=(porMat[k].c[x.situacao]||0)+1});
-      const ordem=["cobertura","programado","disponivel","nao_utilizado","folga","ocorrencia"];
+      const ordem=["cobertura","programado","disponivel_posto","disponivel","nao_utilizado","folga","ocorrencia"];
       const resumo=Object.entries(porMat).sort((a,b)=>a[0].localeCompare(b[0],"pt",{numeric:true})).map(([m,o])=>{
         const r=ultimaReserva(m,false)||{};const tot=ordem.reduce((s,k)=>s+(o.c[k]||0),0);
         return [m,r.nome||o.nome,r.filial||o.filial||"",String(r.escala||o.escala||"").toLowerCase(),...ordem.map(k=>o.c[k]?String(o.c[k]):"–"),String(tot)];
       });
       const num={halign:"center",cellWidth:19};
-      tabela("Resumo por colaborador (dias no período)",["Matrícula","Colaborador","Filial","Escala","Cobertura","Programado","Disponível","Não utilizado","Folga","Ocorrência","Total"],resumo,
-        {0:{cellWidth:20},2:{cellWidth:14,halign:"center"},3:{cellWidth:16,halign:"center"},4:num,5:num,6:num,7:num,8:num,9:num,10:{halign:"center",cellWidth:15,fontStyle:"bold"}});
+      tabela("Resumo por colaborador (dias no período)",["Matrícula","Colaborador","Filial","Escala","Cobertura","Programado","Disp. no posto","Disponível","Não utilizado","Folga","Ocorrência","Total"],resumo,
+        {0:{cellWidth:20},2:{cellWidth:14,halign:"center"},3:{cellWidth:16,halign:"center"},4:num,5:num,6:num,7:num,8:num,9:num,10:num,11:{halign:"center",cellWidth:15,fontStyle:"bold"}});
       }
       /* colaboradores na reserva */
       const resOrd=res.slice().sort((a,b)=>(a.saidaEfetiva?1:0)-(b.saidaEfetiva?1:0)||(b.entrada||"").localeCompare(a.entrada||""));
