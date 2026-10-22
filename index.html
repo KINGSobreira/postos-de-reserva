@@ -90,6 +90,44 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
 .subtabs button{font:600 13.5px var(--f-display);border:1px solid var(--line);background:var(--bg);color:var(--fg);padding:8px 14px;border-radius:999px;cursor:pointer}
 .subtabs button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
 .status{font-size:13px;color:var(--muted)}
+.dash-top{display:flex;flex-wrap:wrap;gap:12px;align-items:end;margin-bottom:16px}
+.dash-top label.f{flex:0 1 200px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:18px}
+.kpi{border:1px solid var(--line);border-radius:10px;padding:12px 14px;background:var(--bg);display:flex;flex-direction:column;gap:2px;min-width:0}
+.kpi.main{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.kpi .v{font:800 26px/1.1 var(--f-display);font-variant-numeric:tabular-nums}
+.kpi .l{font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;opacity:.85;font-weight:600}
+.kpi .s{font-size:12px;color:var(--muted)}
+.kpi.main .s{color:inherit;opacity:.85}
+.kpi.alerta .v{color:var(--danger)}
+.dgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.dgrid .wide{grid-column:1/-1}
+@media (max-width:760px){.dgrid{grid-template-columns:minmax(0,1fr)}}
+.card{border:1px solid var(--line);border-radius:10px;padding:14px 16px;background:var(--surface);min-width:0}
+.card h3{font:700 14px var(--f-display);margin:0 0 4px}
+.card .sub2{font-size:12.5px;color:var(--muted);margin:0 0 12px}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12.5px;margin-bottom:8px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+.bars{display:flex;flex-direction:column;gap:7px}
+.bar{display:grid;grid-template-columns:minmax(0,160px) minmax(0,1fr) auto;gap:10px;align-items:center;font-size:13px}
+.bar .n{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar .t{height:12px;background:var(--bg);border-radius:6px;overflow:hidden;display:flex}
+.bar .t span{display:block;height:100%}
+.bar .q{text-align:right;font-family:var(--f-mono);font-variant-numeric:tabular-nums;font-size:12.5px}
+.dtab{width:100%;border-collapse:collapse;font-size:13px;min-width:560px}
+.dtab th,.dtab td{padding:7px 8px;border-bottom:1px solid var(--line);text-align:left}
+.dtab th{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.dtab th.num,.dtab td.num{text-align:right;font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.pct{display:flex;align-items:center;gap:6px;justify-content:flex-end}
+.pct .t{width:60px;height:8px;background:var(--bg);border-radius:4px;overflow:hidden}
+.pct .t span{display:block;height:100%;background:var(--accent)}
+.alertas{display:flex;flex-direction:column;gap:8px;margin:0;padding:0;list-style:none}
+.alertas li{display:flex;gap:10px;align-items:flex-start;font-size:13.5px;padding:8px 10px;border-radius:8px;background:var(--bg)}
+.alertas li b{font-family:var(--f-mono);min-width:2.2em;text-align:right}
+.alertas li.red b{color:var(--danger)}
+.alertas li.warn b{color:var(--warn)}
+.vazio-d{font-size:13px;color:var(--muted);padding:6px 0}
+svg.dias text{fill:var(--muted);font:10px var(--f-mono)}
 .edit-banner{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;background:var(--warn-soft);color:var(--fg);border:1px solid var(--warn);border-radius:8px;padding:10px 12px;margin-bottom:16px;font-size:14px}
 .edit-banner b{color:var(--warn)}
 .edit-banner .acts{display:flex;gap:8px;flex-wrap:wrap}
@@ -141,6 +179,7 @@ td .acoes{display:flex;gap:6px;flex-wrap:wrap}
       <button role="tab" id="tab-mov" aria-selected="false" data-tab="mov">Situação do dia</button>
       <button role="tab" id="tab-saida" aria-selected="false" data-tab="saida">Saída da reserva</button>
       <button role="tab" id="tab-reg" aria-selected="false" data-tab="reg">Registros</button>
+      <button role="tab" id="tab-dash" aria-selected="false" data-tab="dash">Painel</button>
     </nav>
   </div>
 </header>
@@ -337,6 +376,28 @@ td .acoes{display:flex;gap:6px;flex-wrap:wrap}
     </form>
   </section>
 
+  <!-- PAINEL -->
+  <section class="panel" id="view-dash" hidden>
+    <h2>Painel da reserva</h2>
+    <p class="lead">Como a reserva está sendo usada no mês: coberturas, dias não utilizados, filiais, postos e pontos de atenção. Disponível e Não utilizado são calculados pela escala, nos dias de trabalho sem lançamento.</p>
+    <div class="dash-top">
+      <label class="f"><span>Mês</span><input id="dMes" type="month"></label>
+      <label class="f"><span>Filial</span><select id="dFil"><option value="">Todas</option></select></label>
+      <span class="hint" id="dInfo"></span>
+    </div>
+    <div class="kpis" id="dKpis"></div>
+    <div class="dgrid">
+      <div class="card wide"><h3>Situação dia a dia</h3><p class="sub2">Quantidade de colaboradores da reserva em cada situação, por dia.</p><div class="legend" id="dLeg"></div><div style="overflow-x:auto" id="dDias"></div></div>
+      <div class="card wide"><h3>Por filial</h3><p class="sub2">Aproveitamento = dias trabalhados ÷ (trabalhados + não utilizados), até hoje.</p><div style="overflow-x:auto" id="dFilial"></div></div>
+      <div class="card wide"><h3>Pontos de atenção</h3><p class="sub2">O que merece uma ação agora.</p><ul class="alertas" id="dAlertas"></ul></div>
+      <div class="card wide"><h3>Colaboradores</h3><p class="sub2">Dias no mês por colaborador, do mais usado para o menos usado.</p><div style="overflow-x:auto" id="dColab"></div></div>
+      <div class="card"><h3>Postos mais cobertos</h3><p class="sub2">Dias de cobertura e disponível no posto, por posto.</p><div class="bars" id="dPostos"></div></div>
+      <div class="card"><h3>Motivos das coberturas</h3><p class="sub2">Por que a reserva foi acionada.</p><div class="bars" id="dMotivos"></div></div>
+      <div class="card"><h3>Composição da reserva</h3><p class="sub2">Colaboradores na reserva hoje, por tipo.</p><div class="bars" id="dTipos"></div></div>
+      <div class="card"><h3>Ocorrências</h3><p class="sub2">Dias de ocorrência no mês, por motivo.</p><div class="bars" id="dOcorr"></div></div>
+    </div>
+  </section>
+
   <!-- REGISTROS -->
   <section class="panel" id="view-reg" hidden>
     <h2>Registros</h2>
@@ -405,7 +466,8 @@ td .acoes{display:flex;gap:6px;flex-wrap:wrap}
   document.querySelectorAll("nav.tabs button").forEach(b=>b.addEventListener("click",()=>{
     if(edicao&&b.dataset.tab!==edicao.aba&&!edicao.navegando)cancelarEdicao(false);
     document.querySelectorAll("nav.tabs button").forEach(x=>x.setAttribute("aria-selected",x===b));
-    ["reserva","mov","saida","reg"].forEach(t=>$("view-"+t).hidden=t!==b.dataset.tab);
+    ["reserva","mov","saida","reg","dash"].forEach(t=>$("view-"+t).hidden=t!==b.dataset.tab);
+    if(b.dataset.tab==="dash")renderDash();
   }));
   document.querySelectorAll(".subtabs button").forEach(b=>b.addEventListener("click",()=>{
     sub=b.dataset.sub;
@@ -924,10 +986,10 @@ td .acoes{display:flex;gap:6px;flex-wrap:wrap}
      nos dias de trabalho sem nenhum lançamento:
        - dia já passado, ou hoje com lançamento depois  -> Não utilizado
        - hoje ou futuro, sem nada programado depois     -> Disponível */
-  function gerarAutomaticos(){
+  function gerarAutomaticos(ateFixo){
     const hoje=today(),out=[];
     const fimMes=(()=>{const d=new Date();return isoDe(new Date(d.getFullYear(),d.getMonth()+1,0))})();
-    const ate=$("fAte").value&&$("fAte").value>fimMes?$("fAte").value:fimMes;
+    const ate=ateFixo||($("fAte").value&&$("fAte").value>fimMes?$("fAte").value:fimMes);
     const porMat={};movs.forEach(x=>(porMat[x.matricula]=porMat[x.matricula]||[]).push(x));
     reservas.forEach(r=>{
       if(!r.entrada)return;
@@ -1180,6 +1242,89 @@ td .acoes{display:flex;gap:6px;flex-wrap:wrap}
     finally{btn.disabled=false;btn.textContent=txt}
   });
 
+  /* ================= PAINEL ================= */
+  (()=>{const d=new Date();$("dMes").value=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");
+    $("dFil").innerHTML='<option value="">Todas</option>'+Object.entries(FILIAIS).map(([c,n])=>`<option value="${c}">${c} - ${n}</option>`).join("")})();
+  ["dMes","dFil"].forEach(id=>$(id).addEventListener("change",renderDash));
+  const CORES={cobertura:"var(--accent)",programado:"color-mix(in srgb,var(--accent) 55%,var(--bg))",disponivel_posto:"color-mix(in srgb,var(--accent) 55%,var(--fg))",folga:"color-mix(in srgb,var(--muted) 45%,var(--bg))",ocorrencia:"var(--warn)",nao_utilizado:"var(--danger)",disponivel:"color-mix(in srgb,var(--muted) 25%,var(--bg))"};
+  const ORDEM_D=["cobertura","programado","disponivel_posto","folga","ocorrencia","nao_utilizado","disponivel"];
+  const pctTxt=(a,b)=>b?Math.round(a*100/b)+"%":"—";
+  function barras(el,itens,cor){
+    if(!itens.length){$(el).innerHTML='<div class="vazio-d">Nada no período.</div>';return}
+    const max=Math.max(...itens.map(i=>i[1]));
+    $(el).innerHTML=itens.map(([n,v,extra])=>`<div class="bar"><span class="n" title="${esc(n)}">${esc(n)}</span><span class="t"><span style="width:${max?v*100/max:0}%;background:${cor}"></span></span><span class="q">${v}${extra?` <span class="hint">· ${esc(extra)}</span>`:""}</span></div>`).join("");
+  }
+  function renderDash(){
+    const [y,m]=($("dMes").value||today().slice(0,7)).split("-").map(Number);
+    const ini=`${y}-${String(m).padStart(2,"0")}-01`,fim=isoDe(new Date(y,m,0)),hoje=today(),fil=$("dFil").value;
+    const filialDe=x=>{if(x.filial)return x.filial;const r=ultimaReserva(x.matricula,false);return r?r.filial:""};
+    const okFil=x=>!fil||filialDe(x)===fil;
+    const dados=movs.concat(gerarAutomaticos(fim)).filter(x=>x.data>=ini&&x.data<=fim&&okFil(x));
+    const ativosHoje=reservas.filter(r=>!r.saidaEfetiva&&(!fil||r.filial===fil));
+    const c=k=>dados.filter(x=>x.situacao===k).length;
+    const passados=dados.filter(x=>x.data<=hoje);
+    const trab=passados.filter(x=>x.situacao==="cobertura"||x.situacao==="programado"||x.situacao==="disponivel_posto").length;
+    const nu=passados.filter(x=>x.situacao==="nao_utilizado").length;
+    const progFut=dados.filter(x=>x.data>hoje&&COB(x.situacao)).length;
+    const venc=ativosHoje.filter(r=>r.previsaoSaida&&r.previsaoSaida<hoje);
+    const nomeMes=MESES[m-1].charAt(0)+MESES[m-1].slice(1).toLowerCase();
+    $("dInfo").textContent=`${nomeMes} de ${y}${fil?" · filial "+fil:""} · ${dados.length} dias com situação`;
+    $("dKpis").innerHTML=[
+      ["main",ativosHoje.length,"Na reserva hoje",`${ativosHoje.filter(r=>r.tipo==="Transitória").length} transitória · ${ativosHoje.filter(r=>r.tipo==="Permanente").length} permanente · ${ativosHoje.filter(ehPostoR).length} de posto`],
+      ["",c("cobertura")+c("programado"),"Dias de cobertura",progFut?`${progFut} ainda programados`:"todos realizados"],
+      ["",c("disponivel_posto"),"Disponível no posto","dias no posto contratado"],
+      [nu?"alerta":"",nu,"Não utilizados","dias de trabalho sem uso, até hoje"],
+      ["",pctTxt(trab,trab+nu),"Aproveitamento",`${trab} de ${trab+nu} dias de trabalho`],
+      ["",c("disponivel"),"Disponíveis","dias livres daqui até o fim do mês"],
+      ["",c("ocorrencia"),"Ocorrências","dias de atestado, licença etc."],
+      [venc.length?"alerta":"",venc.length,"Previsão vencida","ainda na reserva"]
+    ].map(([cl,v,l,s2])=>`<div class="kpi ${cl}"><span class="l">${l}</span><span class="v">${v}</span><span class="s">${esc(s2)}</span></div>`).join("");
+    /* dia a dia */
+    $("dLeg").innerHTML=ORDEM_D.filter(k=>c(k)).map(k=>`<span><i style="background:${CORES[k]}"></i>${SIT[k]}</span>`).join("")||'<span class="hint">Sem dados no mês.</span>';
+    const nd=new Date(y,m,0).getDate(),porDia=[];let maxD=1;
+    for(let d=1;d<=nd;d++){const iso=`${y}-${String(m).padStart(2,"0")}-${String(d).padStart(2,"0")}`;const o={};dados.filter(x=>x.data===iso).forEach(x=>o[x.situacao]=(o[x.situacao]||0)+1);const t=Object.values(o).reduce((a,b)=>a+b,0);maxD=Math.max(maxD,t);porDia.push({d,iso,o,t})}
+    const W=Math.max(620,nd*24),H=170,top=16,bot=22,bw=(W-30)/nd;
+    let svg=`<svg class="dias" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="Situação por dia">`;
+    [0,.5,1].forEach(f=>{const yy=top+(H-top-bot)*(1-f);svg+=`<line x1="24" x2="${W}" y1="${yy}" y2="${yy}" stroke="var(--line)" stroke-width="1"/><text x="18" y="${yy+3}" text-anchor="end">${Math.round(maxD*f)}</text>`});
+    porDia.forEach((p,i)=>{let yy=H-bot;const x=26+i*bw;
+      ORDEM_D.forEach(k=>{const v=p.o[k]||0;if(!v)return;const h=v*(H-top-bot)/maxD;yy-=h;svg+=`<rect x="${x+1}" y="${yy}" width="${Math.max(bw-3,2)}" height="${h}" fill="${CORES[k]}"><title>${fmt(p.iso)} · ${SIT[k]}: ${v}</title></rect>`});
+      svg+=`<text x="${x+bw/2}" y="${H-7}" text-anchor="middle"${p.iso===hoje?' style="fill:var(--fg);font-weight:700"':""}>${p.d}</text>`});
+    $("dDias").innerHTML=svg+"</svg>";
+    /* por filial */
+    const fils=[...new Set(dados.map(filialDe).concat(ativosHoje.map(r=>r.filial)))].filter(Boolean).sort();
+    $("dFilial").innerHTML=fils.length?`<table class="dtab"><thead><tr><th>Filial</th><th class="num">Na reserva</th><th class="num">Cobertura</th><th class="num">No posto</th><th class="num">Não utiliz.</th><th class="num">Aproveit.</th></tr></thead><tbody>${fils.map(f=>{
+      const df=dados.filter(x=>filialDe(x)===f),pf=df.filter(x=>x.data<=hoje);
+      const t=pf.filter(x=>COB(x.situacao)||x.situacao==="disponivel_posto").length,n=pf.filter(x=>x.situacao==="nao_utilizado").length,p=t+n?t/(t+n):0;
+      return `<tr><td title="${esc(FILIAIS[f]||"")}"><span class="mono">${f}</span></td><td class="num">${ativosHoje.filter(r=>r.filial===f).length}</td><td class="num">${df.filter(x=>COB(x.situacao)).length}</td><td class="num">${df.filter(x=>x.situacao==="disponivel_posto").length}</td><td class="num">${n}</td><td class="num"><span class="pct">${t+n?Math.round(p*100)+"%":"—"}<span class="t"><span style="width:${p*100}%"></span></span></span></td></tr>`}).join("")}</tbody></table>`:'<div class="vazio-d">Nada no período.</div>';
+    /* colaboradores */
+    const mats=[...new Set(dados.map(x=>x.matricula).concat(ativosHoje.map(r=>r.matricula)))];
+    const linhas=mats.map(mt=>{const dm=dados.filter(x=>x.matricula===mt),r=ultimaReserva(mt,true)||ultimaReserva(mt,false)||{},pm=dm.filter(x=>x.data<=hoje);
+      const cob=dm.filter(x=>COB(x.situacao)).length,dp=dm.filter(x=>x.situacao==="disponivel_posto").length,n=pm.filter(x=>x.situacao==="nao_utilizado").length,t=pm.filter(x=>COB(x.situacao)||x.situacao==="disponivel_posto").length;
+      return {mt,nome:r.nome||(dm[0]||{}).nome||"",filial:r.filial||filialDe(dm[0]||{}),tipo:r.tipo||"",cob,dp,n,oc:dm.filter(x=>x.situacao==="ocorrencia").length,disp:dm.filter(x=>x.situacao==="disponivel").length,p:t+n?t/(t+n):null,postos:[...new Set(dm.filter(x=>COB(x.situacao)&&x.local).map(x=>x.local))]}})
+      .sort((a,b)=>(b.cob+b.dp)-(a.cob+a.dp)||a.n-b.n);
+    $("dColab").innerHTML=linhas.length?`<table class="dtab" style="min-width:820px"><thead><tr><th>Colaborador</th><th>Filial</th><th>Tipo</th><th>Postos cobertos</th><th class="num">Cobertura</th><th class="num">No posto</th><th class="num">Não utiliz.</th><th class="num">Ocorr.</th><th class="num">Disponíveis</th><th class="num">Aproveit.</th></tr></thead><tbody>${linhas.map(l=>`<tr><td>${esc(l.nome)}<br><span class="hint mono">${esc(l.mt)}</span></td><td class="mono">${esc(l.filial)}</td><td>${esc(l.tipo)}</td><td>${esc(l.postos.slice(0,3).join(", ")+(l.postos.length>3?` +${l.postos.length-3}`:""))||"—"}</td><td class="num">${l.cob}</td><td class="num">${l.dp}</td><td class="num"${l.n?' style="color:var(--danger);font-weight:600"':""}>${l.n}</td><td class="num">${l.oc}</td><td class="num">${l.disp}</td><td class="num"><span class="pct">${l.p===null?"—":Math.round(l.p*100)+"%"}<span class="t"><span style="width:${(l.p||0)*100}%"></span></span></span></td></tr>`).join("")}</tbody></table>`:'<div class="vazio-d">Nenhum colaborador no período.</div>';
+    /* postos */
+    const porPosto={};dados.filter(x=>(COB(x.situacao)||x.situacao==="disponivel_posto")&&x.local).forEach(x=>{const k=x.local;(porPosto[k]=porPosto[k]||{d:0,m:new Set()}).d++;porPosto[k].m.add(x.matricula)});
+    barras("dPostos",Object.entries(porPosto).sort((a,b)=>b[1].d-a[1].d).slice(0,10).map(([k,v])=>[k,v.d,v.m.size+(v.m.size>1?" pessoas":" pessoa")]),"var(--accent)");
+    /* motivos */
+    const mot={};dados.filter(x=>COB(x.situacao)&&x.motivo).forEach(x=>mot[x.motivo]=(mot[x.motivo]||0)+1);
+    barras("dMotivos",Object.entries(mot).sort((a,b)=>b[1]-a[1]).slice(0,10),"var(--accent)");
+    /* tipos */
+    barras("dTipos",[["Transitória",ativosHoje.filter(r=>r.tipo==="Transitória").length],["Permanente",ativosHoje.filter(r=>r.tipo==="Permanente").length],["De posto · prevista em contrato",ativosHoje.filter(r=>ehPostoR(r)&&r.previstaContrato==="SIM").length],["De posto · não prevista",ativosHoje.filter(r=>ehPostoR(r)&&r.previstaContrato!=="SIM").length]].filter(x=>x[1]),"color-mix(in srgb,var(--muted) 70%,var(--bg))");
+    /* ocorrências */
+    const oc={};dados.filter(x=>x.situacao==="ocorrencia").forEach(x=>{const k=x.motivo||"Sem motivo";oc[k]=(oc[k]||0)+1});
+    barras("dOcorr",Object.entries(oc).sort((a,b)=>b[1]-a[1]).slice(0,10),"var(--warn)");
+    /* pontos de atenção */
+    const al=[];
+    venc.forEach(r=>al.push(["red",fmt(r.previsaoSaida).slice(0,5),`${r.nome}: previsão de saída vencida e ainda está na reserva.`]));
+    linhas.filter(l=>l.n>=3).sort((a,b)=>b.n-a.n).slice(0,5).forEach(l=>al.push(["red",l.n,`${l.nome} teve ${l.n} dias de trabalho sem uso. Vale alocar em cobertura.`]));
+    ativosHoje.filter(r=>ehPostoR(r)&&r.previstaContrato==="SIM").forEach(r=>{const l=linhas.find(x=>x.mt===r.matricula);if(l&&l.n)al.push(["warn",l.n,`${r.nome} é reserva prevista em contrato (${postoDaReserva(r)}), mas tem dias não utilizados. Lance Disponível no posto nos dias em que esteve lá.`])});
+    const proxDisp=dados.filter(x=>x.situacao==="disponivel"&&x.data>=hoje&&x.data<=isoDe(new Date(Date.now()+2*864e5)));
+    if(proxDisp.length)al.push(["warn",proxDisp.length,`dias disponíveis entre hoje e depois de amanhã sem cobertura programada: ${[...new Set(proxDisp.map(x=>x.nome))].slice(0,4).join(", ")}${new Set(proxDisp.map(x=>x.nome)).size>4?"…":""}.`]);
+    ativosHoje.filter(r=>!movs.some(x=>x.matricula===r.matricula&&x.data>=ini&&x.data<=fim)&&r.entrada<=fim).forEach(r=>al.push(["warn","0",`${r.nome} não tem nenhum lançamento no mês.`]));
+    $("dAlertas").innerHTML=al.length?al.slice(0,12).map(([cl,n,t])=>`<li class="${cl}"><b>${esc(String(n))}</b><span>${esc(t)}</span></li>`).join(""):'<li><b>✓</b><span>Nenhum ponto de atenção no período.</span></li>';
+  }
+
   /* conexão com a planilha (Google Apps Script) */
   db=/^https:\/\/script\.google\.com\//.test(API_URL)?true:null;
   async function refresh(){
@@ -1190,7 +1335,7 @@ td .acoes{display:flex;gap:6px;flex-wrap:wrap}
       movs=(j.movs||[]).map(x=>Object.assign({_id:x.id},x));
       const mats=[...new Map(ativas().map(r=>[r.matricula,r])).values()];
       $("listaReserva").innerHTML=mats.map(r=>`<option value="${esc(r.matricula)}">${esc(r.nome)}</option>`).join("");
-      render();
+      render();if(!$("view-dash").hidden)renderDash();
       $("status").textContent="Atualizado às "+new Date().toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"});
     }catch(e){$("status").textContent="Não foi possível carregar os registros. Verifique a internet e recarregue a página."}
   }
