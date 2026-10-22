@@ -16,9 +16,9 @@ const ABA_PLAN = "Planilha";
 const RES_COLS = ["id", "matricula", "nome", "filial", "funcao", "escala", "tipo", "motivo", "motivoOutro",
   "entrada", "previsaoSaida", "saidaEfetiva", "motivoSaida", "postoFixo", "filialFixo", "dataDesligamento",
   "diasAfastamento", "regiaoFerias", "criadoEm", "saidaRegistradaEm", "turno",
-  "feriasFilial", "feriasPosto", "feriasMatCoberto", "feriasNomeCoberto", "intrajornada", "previstaContrato"];
+  "feriasFilial", "feriasPosto", "feriasMatCoberto", "feriasNomeCoberto", "intrajornada", "previstaContrato", "editadoEm"];
 const MOV_COLS = ["id", "situacao", "data", "matricula", "nome", "filial", "funcao", "escala", "local",
-  "matCoberto", "nomeCoberto", "motivo", "criadoEm", "turno", "escalaCoberto", "horario", "intrajornada"];
+  "matCoberto", "nomeCoberto", "motivo", "criadoEm", "turno", "escalaCoberto", "horario", "intrajornada", "editadoEm"];
 const SAIDA_CAMPOS = ["saidaEfetiva", "motivoSaida", "postoFixo", "filialFixo", "dataDesligamento",
   "diasAfastamento", "regiaoFerias", "saidaRegistradaEm",
   "feriasFilial", "feriasPosto", "feriasMatCoberto", "feriasNomeCoberto"];
@@ -67,6 +67,25 @@ function doPost(e) {
       SAIDA_CAMPOS.forEach(c => { if (c in body.data) dados[c] = body.data[c]; });
       dados.saidaRegistradaEm = agora;
       atualizar_(ABA_RES, RES_COLS, body.id, dados);
+    } else if (body.action === "update") {
+      // edição de um lançamento: altera só os campos enviados (nunca id e criadoEm)
+      const nome = body.tipo === "reservas" ? ABA_RES : body.tipo === "movimentacoes" ? ABA_MOV : null;
+      if (!nome) throw new Error("Tipo de registro inválido.");
+      const cols = nome === ABA_RES ? RES_COLS : MOV_COLS;
+      const dados = {};
+      Object.keys(body.data || {}).forEach(c => { if (cols.indexOf(c) >= 0 && c !== "id" && c !== "criadoEm") dados[c] = body.data[c]; });
+      dados.editadoEm = agora;
+      atualizar_(nome, cols, body.id, dados);
+    } else if (body.action === "replaceMovs") {
+      // edição de um dia ou de um período: apaga os lançamentos antigos e grava os novos
+      const ids = Array.isArray(body.ids) ? body.ids : [];
+      const lista = Array.isArray(body.data) ? body.data : [];
+      if (!ids.length || !lista.length || lista.length > 62) throw new Error("Edição inválida.");
+      lista.forEach(d => exigir_(d, ["situacao", "matricula", "nome", "data"]));
+      const sh = aba_(ABA_MOV, MOV_COLS);
+      const linhas = ids.map(id => linhaDoId_(sh, id)).sort((a, b) => b - a);
+      linhas.forEach(l => sh.deleteRow(l));
+      lista.forEach(d => inserir_(ABA_MOV, MOV_COLS, Object.assign({}, d, { criadoEm: d.criadoEm || agora, editadoEm: agora })));
     } else if (body.action === "delete") {
       const nome = body.tipo === "reservas" ? ABA_RES : body.tipo === "movimentacoes" ? ABA_MOV : null;
       if (!nome) throw new Error("Tipo de registro inválido.");

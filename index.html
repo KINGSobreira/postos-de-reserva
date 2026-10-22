@@ -90,6 +90,12 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
 .subtabs button{font:600 13.5px var(--f-display);border:1px solid var(--line);background:var(--bg);color:var(--fg);padding:8px 14px;border-radius:999px;cursor:pointer}
 .subtabs button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
 .status{font-size:13px;color:var(--muted)}
+.edit-banner{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;background:var(--warn-soft);color:var(--fg);border:1px solid var(--warn);border-radius:8px;padding:10px 12px;margin-bottom:16px;font-size:14px}
+.edit-banner b{color:var(--warn)}
+.edit-banner .acts{display:flex;gap:8px;flex-wrap:wrap}
+.edit-modo{display:flex;flex-wrap:wrap;gap:8px;width:100%}
+.btn.edit{background:transparent;color:var(--fg);border-color:var(--line)}
+td .acoes{display:flex;gap:6px;flex-wrap:wrap}
 .sug-box{position:relative}
 .sug{position:absolute;z-index:25;top:calc(100% + 4px);left:0;right:0;background:var(--surface);border:1px solid var(--line);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.18);padding:4px;max-height:280px;overflow-y:auto}
 .sug button{display:flex;flex-direction:column;align-items:flex-start;gap:1px;width:100%;text-align:left;font:inherit;color:var(--fg);background:transparent;border:0;border-radius:6px;padding:7px 9px;cursor:pointer}
@@ -147,6 +153,7 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
   <section class="panel" id="view-reserva">
     <h2>Entrada na reserva</h2>
     <p class="lead">Registre o colaborador que passou para o posto de reserva. Campos com <em style="color:var(--danger);font-style:normal">*</em> são obrigatórios.</p>
+    <div class="edit-banner" id="r_edit" hidden><span id="r_editTxt"></span><span class="acts"><button type="button" class="btn ghost small" id="r_editSaida" hidden>Editar saída</button><button type="button" class="btn ghost small" id="r_editCancel">Cancelar edição</button></span></div>
     <form id="formReserva" novalidate>
       <div class="grid">
         <label class="f"><span>Matrícula <em>*</em></span><input id="r_mat" name="matricula" inputmode="numeric" autocomplete="off" required></label>
@@ -177,7 +184,7 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
       </div>
       <div class="actions">
         <button class="btn primary" type="submit" id="r_submit">Registrar entrada</button>
-        <button class="btn ghost" type="reset">Limpar</button>
+        <button class="btn ghost" type="reset" id="r_clear">Limpar</button>
         <span id="r_msg" class="msg" hidden></span>
       </div>
     </form>
@@ -187,6 +194,11 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
   <section class="panel" id="view-mov" hidden>
     <h2>Situação do dia</h2>
     <p class="lead">Registre o que o colaborador da reserva fez no dia. Comece a digitar a matrícula ou o nome e escolha o colaborador na lista: filial, função, escala e turno são preenchidos sozinhos.</p>
+    <div class="edit-banner" id="m_edit" hidden><span id="m_editTxt"></span><span class="acts"><button type="button" class="btn ghost small" id="m_editCancel">Cancelar edição</button></span>
+      <div class="edit-modo seg" id="m_editModo" role="radiogroup" aria-label="O que alterar" style="margin:0" hidden>
+        <label><input type="radio" name="m_modo" id="m_modoDia" value="dia" checked> <span id="m_modoDiaTxt">Só este dia</span></label>
+        <label><input type="radio" name="m_modo" id="m_modoPer" value="periodo"> <span id="m_modoPerTxt">Período inteiro</span></label>
+      </div></div>
     <form id="formMov" novalidate>
       <div class="seg" role="radiogroup" aria-label="Situação do dia">
         <label><input type="radio" name="situacao" id="s_cob" value="cobertura" checked> Em cobertura</label>
@@ -273,6 +285,7 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
   <section class="panel" id="view-saida" hidden>
     <h2>Saída da reserva</h2>
     <p class="lead">Registre quando o colaborador deixa o posto de reserva. Digite a matrícula para localizar a entrada dele na reserva.</p>
+    <div class="edit-banner" id="x_edit" hidden><span id="x_editTxt"></span><span class="acts"><button type="button" class="btn danger small" id="x_desfazer">Desfazer saída</button><button type="button" class="btn ghost small" id="x_editCancel">Cancelar edição</button></span></div>
     <form id="formSaida" novalidate>
       <div class="grid">
         <label class="f"><span>Matrícula <em>*</em></span><input id="x_mat" list="listaReserva" inputmode="numeric" autocomplete="off" required></label>
@@ -340,6 +353,7 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
             <div class="multi-act"><button type="button" class="btn ghost small" id="fFilTodas">Todas</button><button type="button" class="btn primary small" id="fFilOk">Aplicar</button></div>
           </div></details></div>
       <label class="f" id="fStatusWrap"><span>Status</span><select id="fStatus"><option value="ativo">Na reserva</option><option value="saiu">Já saíram</option><option value="">Todos</option></select></label>
+      <label class="f" id="fTipoWrap"><span>Tipo</span><select id="fTipo"><option value="">Todos</option><option value="Transitória">Transitória</option><option value="Permanente">Permanente</option><option value="POSTO">Reserva de posto (todas)</option><option value="POSTO_SIM">Reserva de posto · prevista em contrato</option><option value="POSTO_NAO">Reserva de posto · não prevista</option></select></label>
       <label class="f" id="fSitWrap" hidden><span>Situação</span><select id="fSit"><option value="">Todas</option><option value="cobertura">Em cobertura</option><option value="programado">Programado</option><option value="disponivel">Disponível</option><option value="nao_utilizado">Não utilizado</option><option value="disponivel_posto">Disponível no posto</option><option value="folga">Folga</option><option value="ocorrencia">Ocorrência</option></select></label>
       <label class="f"><span>De</span><input id="fDe" type="date"></label>
       <label class="f"><span>Até</span><input id="fAte" type="date"></label>
@@ -387,14 +401,16 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
   const norm=s=>String(s||"").normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase();
 
   /* abas */
+  let edicao=null;
   document.querySelectorAll("nav.tabs button").forEach(b=>b.addEventListener("click",()=>{
+    if(edicao&&b.dataset.tab!==edicao.aba&&!edicao.navegando)cancelarEdicao(false);
     document.querySelectorAll("nav.tabs button").forEach(x=>x.setAttribute("aria-selected",x===b));
     ["reserva","mov","saida","reg"].forEach(t=>$("view-"+t).hidden=t!==b.dataset.tab);
   }));
   document.querySelectorAll(".subtabs button").forEach(b=>b.addEventListener("click",()=>{
     sub=b.dataset.sub;
     document.querySelectorAll(".subtabs button").forEach(x=>x.setAttribute("aria-pressed",x===b));
-    $("fSitWrap").hidden=sub!=="mov";$("fStatusWrap").hidden=sub!=="res";ajustarBotoes();render();
+    $("fSitWrap").hidden=sub!=="mov";$("fStatusWrap").hidden=sub!=="res";$("fTipoWrap").hidden=sub!=="res";ajustarBotoes();render();
   }));
   function ajustarBotoes(){
     const res=sub==="res";
@@ -440,6 +456,13 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
     if(!db)return showMsg($("r_msg"),"err","Sem conexão com a planilha. Verifique a internet e tente de novo.");
     const doc={matricula:$("r_mat").value.trim(),nome:$("r_nome").value.trim().toUpperCase(),filial:$("r_filial").value,funcao:valorFuncao("r"),escala:$("r_escala").value,turno:$("r_turno").value,tipo:$("r_tipo").value==="POSTO"?"RESERVA DE POSTO - "+$("r_tipoPosto").value.trim().toUpperCase():$("r_tipo").value,previstaContrato:$("r_tipo").value==="POSTO"?contratoSel():"",motivo:$("r_motivo").value,motivoOutro:$("r_motivo").value==="Outro"?$("r_outro").value.trim():"",entrada:$("r_entrada").value,previsaoSaida:$("r_saida").value||"",criadoPor:uid||"",criadoEm:new Date().toISOString()};
     $("r_submit").disabled=true;
+    if(edicao&&edicao.aba==="reserva"){
+      delete doc.criadoPor;delete doc.criadoEm;
+      try{await apiPost({action:"update",tipo:"reservas",id:edicao.id,data:doc});concluirEdicao(`Entrada de ${doc.nome} atualizada.`)}
+      catch(err){showMsg($("r_msg"),"err",errEdicao(err))}
+      finally{$("r_submit").disabled=readOnly}
+      return;
+    }
     try{await apiPost({action:"addReserva",data:doc});$("formReserva").reset();showMsg($("r_msg"),"ok",`Entrada de ${doc.nome} registrada.`)}
     catch(err){showMsg($("r_msg"),"err",errText(err))}
     finally{$("r_submit").disabled=readOnly}
@@ -483,7 +506,8 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
   }
   /* escala com que o colaborador foi cadastrado na reserva */
   const escalaCadastro=()=>{const m=$("m_mat").value.trim(),r=m&&(ultimaReserva(m,true)||ultimaReserva(m,false));return r?r.escala:""};
-  const jaLancado=(mat,iso)=>movs.some(x=>x.matricula===mat&&x.data===iso);
+  const ignorados=()=>new Set(edicao&&edicao.aba==="mov"?edicao.ids:[]);
+  const jaLancado=(mat,iso)=>{const ig=ignorados();return movs.some(x=>x.matricula===mat&&x.data===iso&&!ig.has(x._id))};
   /* cobertura em escala 12x36: depois de um plantão 12x36 vem um dia de folga.
      Devolve o plantão vizinho que impede o lançamento, ou "" se estiver livre.
      Conta os dias corridos, inclusive na troca de mês. */
@@ -492,7 +516,7 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
     const d=new Date(iso+"T12:00:00");
     for(const k of [-1,1]){
       const v=new Date(d);v.setDate(v.getDate()+k);const vi=isoDe(v);
-      if(movs.some(x=>x.matricula===mat&&x.data===vi&&COB(x.situacao)&&(x.escalaCoberto||x.escala)==="12X36"))return vi;
+      if(movs.some(x=>x.matricula===mat&&x.data===vi&&COB(x.situacao)&&(x.escalaCoberto||x.escala)==="12X36"&&!ignorados().has(x._id)))return vi;
     }
     return "";
   }
@@ -529,7 +553,7 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
     const s=sitAtual();
     $("blk-cobertura").hidden=!COB(s);$("blk-nao_utilizado").hidden=s!=="nao_utilizado";$("blk-ocorrencia").hidden=s!=="ocorrencia";$("blk-disponivel_posto").hidden=s!=="disponivel_posto";
     if(s==="disponivel_posto")preencherPosto();
-    $("m_ateWrap").hidden=!PER(s);$("m_dataLbl").textContent=PER(s)?"Data (início)":"Data";
+    $("m_ateWrap").hidden=!PER(s)||(edicao&&edicao.aba==="mov"&&!$("m_modoPer").checked);$("m_dataLbl").textContent=PER(s)?"Data (início)":"Data";
     $("c_titulo").textContent=s==="programado"?"Programado":"Em cobertura";
     excluidos.clear();atualizarDias();
   }
@@ -614,6 +638,14 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
       return b;
     });
     $("m_submit").disabled=true;
+    if(edicao&&edicao.aba==="mov"){
+      try{
+        await apiPost({action:"replaceMovs",ids:edicao.ids,data:regs.map(x=>Object.assign(x,{editadoEm:agora}))});
+        concluirEdicao(regs.length>1?`${regs.length} dias de ${regs[0].nome} atualizados.`:`Lançamento de ${regs[0].nome} em ${fmt(regs[0].data)} atualizado.`);
+      }catch(err){showMsg($("m_msg"),"err",errEdicao(err))}
+      finally{$("m_submit").disabled=readOnly}
+      return;
+    }
     try{
       await apiPostMovs(regs);
       const nome=regs[0].nome;limparMov();
@@ -654,7 +686,7 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
     if(mot==="Afastado"&&!(parseInt($("x_dias").value,10)>0)){mark($("x_dias"),true);bad=true}
     if(bad)return showMsg($("x_msg"),"err","Preencha os campos obrigatórios destacados.");
     if(!db)return showMsg($("x_msg"),"err","Sem conexão com a planilha. Verifique a internet e tente de novo.");
-    const r=localizarSaida();
+    const r=edicao&&edicao.aba==="saida"?edicao.reg:localizarSaida();
     if(!r){mark($("x_mat"),true);return showMsg($("x_msg"),"err","Essa matrícula não está na reserva. Confira o número ou registre a entrada primeiro.")}
     if($("x_data").value<(r.entrada||"")){mark($("x_data"),true);return showMsg($("x_msg"),"err",`A saída não pode ser antes da entrada na reserva (${fmt(r.entrada)}).`)}
     const upd={saidaEfetiva:$("x_data").value,motivoSaida:mot,
@@ -669,6 +701,13 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
       feriasNomeCoberto:mot==="Substituto de férias"?$("x_fNome").value.trim().toUpperCase():"",
       saidaRegistradaPor:uid||"",saidaRegistradaEm:new Date().toISOString()};
     $("x_submit").disabled=true;
+    if(edicao&&edicao.aba==="saida"){
+      upd.editadoEm=new Date().toISOString();
+      try{await apiPost({action:"update",tipo:"reservas",id:r._id,data:upd});concluirEdicao(`Saída de ${r.nome} atualizada.`)}
+      catch(err){showMsg($("x_msg"),"err",errEdicao(err))}
+      finally{$("x_submit").disabled=readOnly}
+      return;
+    }
     try{await apiPost({action:"saida",id:r._id,data:upd});limparSaida();showMsg($("x_msg"),"ok",`Saída de ${r.nome} registrada (${mot}).`)}
     catch(err){showMsg($("x_msg"),"err",errText(err))}
     finally{$("x_submit").disabled=readOnly}
@@ -682,6 +721,125 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
     return "";
   }
 
+  /* ================= EDIÇÃO ================= */
+  const irPara=tab=>{if(edicao)edicao.navegando=true;document.querySelector(`nav.tabs button[data-tab="${tab}"]`).click();if(edicao)edicao.navegando=false;window.scrollTo({top:0,behavior:"smooth"})};
+  const disparar=id=>$(id).dispatchEvent(new Event("change",{bubbles:true}));
+  function errEdicao(err){
+    const m=(err&&err.message)||"";
+    if(/Ação desconhecida/.test(m))return "A planilha ainda não sabe salvar edições. Atualize o script da planilha (Code.gs) com a versão nova do GitHub e publique uma nova versão.";
+    return errText(err);
+  }
+  function modoEdicao(aba,ligado){
+    const p={reserva:"r",mov:"m",saida:"x"}[aba];
+    $(p+"_edit").hidden=!ligado;
+    $(p+"_submit").textContent=ligado?"Salvar alterações":{r:"Registrar entrada",m:"Registrar situação",x:"Registrar saída"}[p];
+    $(p+"_clear").hidden=ligado;
+  }
+  function cancelarEdicao(voltar=true){
+    if(!edicao)return;const aba=edicao.aba;edicao=null;
+    modoEdicao(aba,false);
+    if(aba==="reserva"){$("formReserva").reset();$("r_mat").readOnly=false}
+    if(aba==="mov"){limparMov();$("m_editModo").hidden=true}
+    if(aba==="saida"){limparSaida();$("x_mat").readOnly=false}
+    if(voltar)irPara("reg");
+  }
+  function concluirEdicao(msg){cancelarEdicao(true);$("status").textContent=msg}
+  $("r_editCancel").addEventListener("click",()=>cancelarEdicao(true));
+  $("m_editCancel").addEventListener("click",()=>cancelarEdicao(true));
+  $("x_editCancel").addEventListener("click",()=>cancelarEdicao(true));
+
+  function editarReserva(x){
+    if(edicao)cancelarEdicao(false);
+    edicao={aba:"reserva",id:x._id,reg:x};
+    irPara("reserva");
+    $("formReserva").reset();
+    setTimeout(()=>{
+      $("r_mat").value=x.matricula;$("r_nome").value=x.nome;$("r_filial").value=x.filial;setFuncao("r",x.funcao);
+      $("r_escala").value=x.escala||"";$("r_turno").value=x.turno||"";
+      const m=/^RESERVA DE POSTO - (.+)$/.exec(x.tipo||"");
+      if(m){$("r_tipo").value="POSTO";disparar("r_tipo");$("r_tipoPosto").value=m[1];
+        document.querySelectorAll('input[name="r_contrato"]').forEach(c=>c.checked=c.value===x.previstaContrato)}
+      else{$("r_tipo").value=x.tipo||"";disparar("r_tipo")}
+      $("r_motivo").value=x.motivo||"";disparar("r_motivo");if(x.motivo==="Outro")$("r_outro").value=x.motivoOutro||"";
+      $("r_entrada").value=x.entrada||"";$("r_saida").value=x.previsaoSaida||"";
+      $("r_editTxt").innerHTML=`Editando a entrada de <b>${esc(x.nome)}</b> (${esc(x.matricula)}). Altere o que precisar e clique em Salvar alterações.`;
+      $("r_editSaida").hidden=!x.saidaEfetiva;
+      modoEdicao("reserva",true);
+    },30);
+  }
+  $("r_editSaida").addEventListener("click",()=>{const x=edicao&&edicao.reg;if(x)editarSaida(x)});
+
+  function editarSaida(x){
+    if(edicao)cancelarEdicao(false);
+    edicao={aba:"saida",id:x._id,reg:x};
+    irPara("saida");limparSaida();
+    $("x_mat").value=x.matricula;$("x_mat").readOnly=true;$("x_nome").value=x.nome;
+    $("x_data").value=x.saidaEfetiva||today();$("x_motivo").value=x.motivoSaida||"";disparar("x_motivo");
+    $("x_posto").value=x.postoFixo||"";$("x_filial").value=x.filialFixo||"";$("x_deslig").value=x.dataDesligamento||"";$("x_dias").value=x.diasAfastamento||"";
+    $("x_regiao").value=x.regiaoFerias||"";$("x_fFilial").value=x.feriasFilial||"";$("x_fPosto").value=x.feriasPosto||"";$("x_fMat").value=x.feriasMatCoberto||"";$("x_fNome").value=x.feriasNomeCoberto||"";
+    $("x_found").textContent=`Na reserva desde ${fmt(x.entrada)} · filial ${x.filial} · escala cadastrada: ${x.escala||"—"} · ${x.tipo}`;
+    $("x_editTxt").innerHTML=`Editando a saída de <b>${esc(x.nome)}</b> (${esc(x.matricula)}). Se a saída foi registrada por engano, use Desfazer saída.`;
+    $("x_desfazer").textContent="Desfazer saída";delete $("x_desfazer").dataset.armed;
+    modoEdicao("saida",true);
+  }
+  $("x_desfazer").addEventListener("click",async()=>{
+    const b=$("x_desfazer");if(!edicao||edicao.aba!=="saida")return;
+    if(!b.dataset.armed){b.dataset.armed="1";b.textContent="Confirmar: desfazer saída";setTimeout(()=>{if(b.dataset.armed){delete b.dataset.armed;b.textContent="Desfazer saída"}},4000);return}
+    const x=edicao.reg,vazio={};["saidaEfetiva","motivoSaida","postoFixo","filialFixo","dataDesligamento","diasAfastamento","regiaoFerias","feriasFilial","feriasPosto","feriasMatCoberto","feriasNomeCoberto","saidaRegistradaEm"].forEach(k=>vazio[k]="");
+    vazio.editadoEm=new Date().toISOString();b.disabled=true;
+    try{await apiPost({action:"update",tipo:"reservas",id:x._id,data:vazio});concluirEdicao(`Saída de ${x.nome} desfeita: o colaborador voltou para a reserva.`)}
+    catch(err){showMsg($("x_msg"),"err",errEdicao(err))}
+    finally{b.disabled=false}
+  });
+
+  const grupoDe=x=>x.criadoEm?movs.filter(m=>m.matricula===x.matricula&&m.criadoEm===x.criadoEm).sort((a,b)=>a.data.localeCompare(b.data)):[x];
+  function aplicarModoMov(){
+    const x=edicao.reg,grupo=edicao.grupo,periodo=$("m_modoPer").checked&&grupo.length>1;
+    edicao.ids=periodo?grupo.map(g=>g._id):[x._id];
+    excluidos.clear();
+    if(periodo){
+      $("m_data").value=grupo[0].data;$("m_ate").value=grupo[grupo.length-1].data;
+      const tem=new Set(grupo.map(g=>g.data));
+      (diasDoLancamento()||[]).forEach(iso=>{if(!tem.has(iso))excluidos.add(iso)});
+    }else{$("m_data").value=x.data;$("m_ate").value=""}
+    $("m_ateWrap").hidden=!periodo;
+    atualizarDias();
+  }
+  document.querySelectorAll('input[name="m_modo"]').forEach(r=>r.addEventListener("change",aplicarModoMov));
+  function editarMov(x){
+    const sit=(x.situacao==="programado"&&grupoDe(x).some(g=>g.situacao==="cobertura"))?"cobertura":x.situacao;
+    const radio=document.querySelector(`input[name="situacao"][value="${sit}"]`);
+    if(!radio){$("status").textContent=`Lançamentos de "${SIT[x.situacao]||x.situacao}" não podem mais ser editados. Exclua e lance de novo, se precisar.`;return}
+    if(edicao)cancelarEdicao(false);
+    const grupo=grupoDe(x);
+    edicao={aba:"mov",id:x._id,reg:x,grupo,ids:[x._id]};
+    irPara("mov");limparMov();
+    radio.checked=true;trocarSituacao();
+    $("m_mat").value=x.matricula;preencherPorMatricula();$("m_nome").value=x.nome;
+    if(COB(sit)){
+      $("c_filial").value=x.filial||"";setFuncao("c",x.funcao);$("c_escala").value=x.escala||"";$("c_turno").value=x.turno||"";
+      $("c_local").value=x.local||"";$("c_mat2").value=x.matCoberto||"";$("c_nome2").value=x.nomeCoberto||"";$("c_escalaCob").value=x.escalaCoberto||"";
+      document.querySelectorAll('input[name="c_intra"]').forEach(c=>c.checked=c.value===x.intrajornada);
+      const h=/^(\d{2})h(\d{2}) às (\d{2})h(\d{2})$/.exec(x.horario||"");$("c_hIni").value=h?`${h[1]}:${h[2]}`:"";$("c_hFim").value=h?`${h[3]}:${h[4]}`:"";
+      const naLista=[...$("c_motivo").options].some(o=>o.value===x.motivo);
+      if(x.motivo&&!naLista){$("c_motivo").value="OUTRO";$("c_motivoOutro").value=x.motivo;$("c_motivoOutroWrap").hidden=false}else $("c_motivo").value=x.motivo||"";
+    }else if(sit==="ocorrencia")$("o_motivo").value=x.motivo||"";
+    else if(sit==="nao_utilizado")$("n_motivo").value=x.motivo||"";
+    else if(sit==="disponivel_posto"){$("d_posto").value=x.local||"";$("d_posto").dataset.editado="1"}
+    const per=grupo.length>1;
+    $("m_editModo").hidden=!per;$("m_modoDia").checked=true;
+    if(per){$("m_modoDiaTxt").textContent=`Só este dia (${fmt(x.data).slice(0,5)})`;$("m_modoPerTxt").textContent=`Período inteiro (${fmt(grupo[0].data).slice(0,5)} a ${fmt(grupo[grupo.length-1].data).slice(0,5)} · ${grupo.length} dias)`}
+    $("m_editTxt").innerHTML=`Editando ${esc(SIT[x.situacao]||x.situacao).toLowerCase()} de <b>${esc(x.nome)}</b> em ${fmt(x.data)}.${per?" Esse dia foi lançado junto com outros: escolha se a alteração vale só para ele ou para o período inteiro.":""}`;
+    modoEdicao("mov",true);
+    aplicarModoMov();
+  }
+  $("tbl").addEventListener("click",e=>{
+    const b=e.target.closest("[data-edit]");if(!b)return;
+    const [tipo,id]=b.dataset.edit.split("/");
+    if(tipo==="reservas"){const x=reservas.find(r=>r._id===id);if(x)editarReserva(x)}
+    else{const x=movs.find(m=>m._id===id);if(x)editarMov(x)}
+  });
+
   function errText(err){
     const c=err&&err.code;
     if(c==="invalid_argument"){setReadOnly();return "Seu acesso a este link é só de leitura. Peça ao responsável para liberar acesso de Colaborador."}
@@ -693,7 +851,7 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
     const b=$("banner");b.hidden=false;b.textContent="Você está com acesso só de leitura: pode consultar os registros, mas não lançar novos."}
 
   /* REGISTROS */
-  ["q","fSit","fStatus","fDe","fAte"].forEach(id=>$(id).addEventListener("input",render));
+  ["q","fSit","fStatus","fTipo","fDe","fAte"].forEach(id=>$(id).addEventListener("input",render));
   /* filtro de filial com seleção múltipla (nenhuma marcada = todas) */
   const filiaisSel=()=>[...document.querySelectorAll(".fFilCk:checked")].map(c=>c.value);
   const filtraFilial=f=>{const sel=filiaisSel();return !sel.length||sel.includes(f)};
@@ -710,12 +868,22 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
       const st=$("fStatus").value;
       if(sub==="res"&&st==="ativo"&&x.saidaEfetiva)return false;
       if(sub==="res"&&st==="saiu"&&!x.saidaEfetiva)return false;
+      if(sub==="res"&&!casaTipo(x,$("fTipo").value))return false;
       const d=x[dateField]||"";if(de&&d<de)return false;if(ate&&d>ate)return false;
       if(q&&!norm([x.matricula,x.nome,x.local,x.matCoberto,x.nomeCoberto].join(" ")).includes(q))return false;
       return true;
     });
   }
   function podeExcluir(){return true}
+  const ehPostoR=x=>String(x.tipo||"").startsWith("RESERVA DE POSTO");
+  function casaTipo(x,f){
+    if(!f)return true;
+    if(f==="POSTO")return ehPostoR(x);
+    if(f==="POSTO_SIM")return ehPostoR(x)&&x.previstaContrato==="SIM";
+    if(f==="POSTO_NAO")return ehPostoR(x)&&x.previstaContrato!=="SIM";
+    return x.tipo===f;
+  }
+  const quandoEditado=x=>x.editadoEm?`<br><span class="hint">editado em ${new Date(x.editadoEm).toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}).replace(","," às")}</span>`:"";
   function render(){
     const thead=$("tbl").tHead,tbody=$("tbl").tBodies[0];
     if(sub==="res"){
@@ -723,17 +891,18 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
       const hoje=today();
       const atv=rows.filter(x=>!x.saidaEfetiva);
       const venc=atv.filter(x=>x.previsaoSaida&&x.previsaoSaida<hoje).length;
-      $("counts").innerHTML=`<span class="chip">${atv.length} na reserva</span><span class="chip gray">${atv.filter(x=>x.tipo==="Transitória").length} transitória</span><span class="chip gray">${atv.filter(x=>x.tipo==="Permanente").length} permanente</span>${atv.some(x=>String(x.tipo).startsWith("RESERVA DE POSTO"))?`<span class="chip gray">${atv.filter(x=>String(x.tipo).startsWith("RESERVA DE POSTO")).length} reserva de posto</span>`:""}${rows.length-atv.length?`<span class="chip gray">${rows.length-atv.length} já saíram</span>`:""}${venc?`<span class="chip red">${venc} com previsão de saída vencida</span>`:""}`;
-      thead.innerHTML="<tr><th>Matrícula</th><th>Nome</th><th>Filial</th><th>Função</th><th>Escala</th><th>Tipo</th><th>Motivo da entrada</th><th>Entrada</th><th>Prev. saída</th><th>Saída efetiva</th><th></th></tr>";
-      tbody.innerHTML=rows.length?rows.map(x=>`<tr><td class="mono">${esc(x.matricula)}</td><td>${esc(x.nome)}</td><td class="mono" title="${esc(FILIAIS[x.filial]||"")}">${esc(x.filial)}</td><td>${esc(x.funcao)}</td><td class="mono">${esc(x.escala)}${x.turno?`<br><span class="hint">${esc(x.turno)}</span>`:""}</td><td>${esc(x.tipo)}${x.previstaContrato?`<br><span class="hint">Prevista em contrato: ${esc(x.previstaContrato)}</span>`:""}</td><td>${esc(x.motivo)}${x.motivoOutro?`: ${esc(x.motivoOutro)}`:""}</td><td class="mono">${fmt(x.entrada)}</td><td class="mono">${x.previsaoSaida?`<span class="${!x.saidaEfetiva&&x.previsaoSaida<hoje?"chip red":""}">${fmt(x.previsaoSaida)}</span>`:"—"}</td><td>${x.saidaEfetiva?`<span class="mono">${fmt(x.saidaEfetiva)}</span><br><span class="hint">${esc(x.motivoSaida)}${detalheSaida(x)?" · "+esc(detalheSaida(x)):""}</span>`:"—"}</td><td>${podeExcluir(x)?`<button class="btn danger small" data-del="reservas/${esc(x._id)}">Excluir</button>`:""}</td></tr>`).join("")
-        :`<tr><td colspan="11" class="empty">${db?"Nenhum colaborador com esses filtros. Os registros feitos na aba Entrada na reserva aparecem aqui.":"Carregando registros…"}</td></tr>`;
+      const nT=f=>rows.filter(x=>casaTipo(x,f)).length;
+      $("counts").innerHTML=`<span class="chip">${rows.length} ${rows.length===1?"colaborador":"colaboradores"}${$("fStatus").value==="ativo"?" na reserva":""}</span><span class="chip gray">${nT("Transitória")} transitória</span><span class="chip gray">${nT("Permanente")} permanente</span><span class="chip gray">${nT("POSTO_SIM")} reserva de posto prevista em contrato</span><span class="chip gray">${nT("POSTO_NAO")} reserva de posto não prevista</span>${$("fStatus").value!=="ativo"&&rows.length-atv.length?`<span class="chip gray">${rows.length-atv.length} já saíram</span>`:""}${venc?`<span class="chip red">${venc} com previsão de saída vencida</span>`:""}`;
+      thead.innerHTML="<tr><th>Matrícula</th><th>Nome</th><th>Filial</th><th>Função</th><th>Escala</th><th>Tipo</th><th>Prevista em contrato</th><th>Motivo da entrada</th><th>Entrada</th><th>Prev. saída</th><th>Saída efetiva</th><th></th></tr>";
+      tbody.innerHTML=rows.length?rows.map(x=>`<tr><td class="mono">${esc(x.matricula)}</td><td>${esc(x.nome)}</td><td class="mono" title="${esc(FILIAIS[x.filial]||"")}">${esc(x.filial)}</td><td>${esc(x.funcao)}</td><td class="mono">${esc(x.escala)}${x.turno?`<br><span class="hint">${esc(x.turno)}</span>`:""}</td><td>${esc(x.tipo)}</td><td>${ehPostoR(x)?(x.previstaContrato==="SIM"?'<span class="chip">Sim</span>':x.previstaContrato?'<span class="chip gray">Não</span>':"—"):"—"}</td><td>${esc(x.motivo)}${x.motivoOutro?`: ${esc(x.motivoOutro)}`:""}</td><td class="mono">${fmt(x.entrada)}</td><td class="mono">${x.previsaoSaida?`<span class="${!x.saidaEfetiva&&x.previsaoSaida<hoje?"chip red":""}">${fmt(x.previsaoSaida)}</span>`:"—"}</td><td>${x.saidaEfetiva?`<span class="mono">${fmt(x.saidaEfetiva)}</span><br><span class="hint">${esc(x.motivoSaida)}${detalheSaida(x)?" · "+esc(detalheSaida(x)):""}</span>`:"—"}</td><td><div class="acoes"><button class="btn edit small" data-edit="reservas/${esc(x._id)}">Editar</button>${podeExcluir(x)?`<button class="btn danger small" data-del="reservas/${esc(x._id)}">Excluir</button>`:""}</div>${quandoEditado(x)}</td></tr>`).join("")
+        :`<tr><td colspan="12" class="empty">${db?"Nenhum colaborador com esses filtros. Os registros feitos na aba Entrada na reserva aparecem aqui.":"Carregando registros…"}</td></tr>`;
     }else{
       const rows=filtrar(movs,"data").sort((a,b)=>(b.data||"").localeCompare(a.data||"")||(b.criadoEm||"").localeCompare(a.criadoEm||""));
       const n=s=>rows.filter(x=>x.situacao===s).length;
       const cls={cobertura:"",programado:"",ocorrencia:"warn"};
       $("counts").innerHTML=Object.keys(SIT).filter(k=>n(k)||k==="cobertura").map(k=>`<span class="chip ${cls[k]??"gray"}">${n(k)} ${SIT[k].toLowerCase()}</span>`).join("");
       thead.innerHTML="<tr><th>Data</th><th>Situação</th><th>Matrícula</th><th>Nome (reserva)</th><th>Filial</th><th>Função / Escala</th><th>Posto de cobertura</th><th>Colaborador coberto</th><th>Motivo</th><th></th></tr>";
-      tbody.innerHTML=rows.length?rows.map(x=>`<tr><td class="mono">${fmt(x.data)}</td><td><span class="chip ${COB(x.situacao)?"":x.situacao==="ocorrencia"?"warn":"gray"}">${SIT[x.situacao]||esc(x.situacao)}</span></td><td class="mono">${esc(x.matricula)}</td><td>${esc(x.nome)}</td><td class="mono">${esc(x.filial||"—")}</td><td>${x.funcao?`${esc(x.funcao)} · ${esc(x.escala)}`:"—"}</td><td>${esc(x.local||"—")}${x.turno||x.horario||x.intrajornada?`<br><span class="hint">${esc([x.turno,x.horario,x.intrajornada?"Intrajornada: "+x.intrajornada:""].filter(Boolean).join(" · "))}</span>`:""}</td><td>${x.matCoberto?`<span class="mono">${esc(x.matCoberto)}</span> ${esc(x.nomeCoberto)}${x.escalaCoberto?`<br><span class="hint">Escala ${esc(x.escalaCoberto)}</span>`:""}`:"—"}</td><td>${esc(x.motivo||"—")}</td><td>${podeExcluir(x)?`<button class="btn danger small" data-del="movimentacoes/${esc(x._id)}">Excluir</button>`:""}</td></tr>`).join("")
+      tbody.innerHTML=rows.length?rows.map(x=>`<tr><td class="mono">${fmt(x.data)}</td><td><span class="chip ${COB(x.situacao)?"":x.situacao==="ocorrencia"?"warn":"gray"}">${SIT[x.situacao]||esc(x.situacao)}</span></td><td class="mono">${esc(x.matricula)}</td><td>${esc(x.nome)}</td><td class="mono">${esc(x.filial||"—")}</td><td>${x.funcao?`${esc(x.funcao)} · ${esc(x.escala)}`:"—"}</td><td>${esc(x.local||"—")}${x.turno||x.horario||x.intrajornada?`<br><span class="hint">${esc([x.turno,x.horario,x.intrajornada?"Intrajornada: "+x.intrajornada:""].filter(Boolean).join(" · "))}</span>`:""}</td><td>${x.matCoberto?`<span class="mono">${esc(x.matCoberto)}</span> ${esc(x.nomeCoberto)}${x.escalaCoberto?`<br><span class="hint">Escala ${esc(x.escalaCoberto)}</span>`:""}`:"—"}</td><td>${esc(x.motivo||"—")}</td><td><div class="acoes"><button class="btn edit small" data-edit="movimentacoes/${esc(x._id)}">Editar</button>${podeExcluir(x)?`<button class="btn danger small" data-del="movimentacoes/${esc(x._id)}">Excluir</button>`:""}</div>${quandoEditado(x)}</td></tr>`).join("")
         :`<tr><td colspan="10" class="empty">${db?"Nenhuma situação registrada com esses filtros. Os lançamentos da aba Situação do dia aparecem aqui.":"Carregando registros…"}</td></tr>`;
     }
   }
@@ -927,7 +1096,8 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
       const hoje=today(),agora=new Date();
       const filSel=filiaisSel(),de=$("fDe").value,ate=$("fAte").value,q=$("q").value.trim();
       const stTxt={ativo:"Na reserva",saiu:"Já saíram","":"Todos"}[$("fStatus").value];
-      const filtroTxt=(modoRes?["Status: "+stTxt]:[]).concat([(filSel.length?(filSel.length>1?"Filiais: ":"Filial: ")+filSel.map(f=>filSel.length>2?f:f+" · "+(FILIAIS[f]||"")).join(", "):"Filial: Todas"),"Período: "+(de||ate?(de?fmt(de):"início")+" a "+(ate?fmt(ate):"hoje"):"Todo o histórico")].concat(q?["Busca: "+q]:[])).join("   |   ");
+      const tipoTxt=$("fTipo").options[$("fTipo").selectedIndex].text;
+      const filtroTxt=(modoRes?["Status: "+stTxt].concat($("fTipo").value?["Tipo: "+tipoTxt]:[]):[]).concat([(filSel.length?(filSel.length>1?"Filiais: ":"Filial: ")+filSel.map(f=>filSel.length>2?f:f+" · "+(FILIAIS[f]||"")).join(", "):"Filial: Todas"),"Período: "+(de||ate?(de?fmt(de):"início")+" a "+(ate?fmt(ate):"hoje"):"Todo o histórico")].concat(q?["Busca: "+q]:[])).join("   |   ");
       const logo=await logoDataUrl();
       const {jsPDF}=window.jspdf;const doc=new jsPDF({orientation:"landscape",unit:"mm",format:"a4"});
       const W=doc.internal.pageSize.getWidth(),H=doc.internal.pageSize.getHeight(),M=12;
@@ -961,7 +1131,7 @@ td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:
       const ativos=res.filter(x=>!x.saidaEfetiva);
       const cont=k=>mv.filter(x=>x.situacao===k).length;
       const ehPosto=x=>String(x.tipo).startsWith("RESERVA DE POSTO");
-      const cards=modoRes?[["Na reserva",ativos.length],["Transitória",ativos.filter(x=>x.tipo==="Transitória").length],["Permanente",ativos.filter(x=>x.tipo==="Permanente").length],["Reserva de posto",ativos.filter(ehPosto).length],["Já saíram",res.length-ativos.length],["Prev. saída vencida",ativos.filter(x=>x.previsaoSaida&&x.previsaoSaida<hoje).length]]:[["Na reserva",ativos.length],["Em cobertura",cont("cobertura")],["Programado",cont("programado")],["Disp. no posto",cont("disponivel_posto")],["Disponível",cont("disponivel")],["Não utilizado",cont("nao_utilizado")],["Folga",cont("folga")],["Ocorrência",cont("ocorrencia")],["Prev. saída vencida",ativos.filter(x=>x.previsaoSaida&&x.previsaoSaida<hoje).length]];
+      const cards=modoRes?[["Na reserva",ativos.length],["Transitória",ativos.filter(x=>x.tipo==="Transitória").length],["Permanente",ativos.filter(x=>x.tipo==="Permanente").length],["Posto c/ contrato",ativos.filter(x=>ehPosto(x)&&x.previstaContrato==="SIM").length],["Posto s/ contrato",ativos.filter(x=>ehPosto(x)&&x.previstaContrato!=="SIM").length],["Já saíram",res.length-ativos.length],["Prev. saída vencida",ativos.filter(x=>x.previsaoSaida&&x.previsaoSaida<hoje).length]]:[["Na reserva",ativos.length],["Em cobertura",cont("cobertura")],["Programado",cont("programado")],["Disp. no posto",cont("disponivel_posto")],["Disponível",cont("disponivel")],["Não utilizado",cont("nao_utilizado")],["Folga",cont("folga")],["Ocorrência",cont("ocorrencia")],["Prev. saída vencida",ativos.filter(x=>x.previsaoSaida&&x.previsaoSaida<hoje).length]];
       const gap=3,cw=(W-2*M-gap*(cards.length-1))/cards.length;
       cards.forEach(([rot,val],i)=>{
         const x=M+i*(cw+gap),destaque=i===0;
