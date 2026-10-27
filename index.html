@@ -421,6 +421,10 @@ td .acoes{display:flex;gap:6px;flex-wrap:wrap}
       <button class="btn ghost" type="button" id="btnXlsx">Baixar planilha Excel</button>
       <button class="btn ghost" type="button" id="btnControle">Baixar Controle de Reservas</button>
       <button class="btn primary" type="button" id="btnPdf">Emitir PDF</button>
+      <span id="escalaWrap" style="display:flex;gap:8px;align-items:end;flex-wrap:wrap" hidden>
+        <label class="f" style="flex:0 1 170px"><span>Mês da escala</span><input id="fMes" type="month"></label>
+        <button class="btn primary" type="button" id="btnEscala">Emitir escala mensal (PDF)</button>
+      </span>
     </div>
     <div class="counts" id="counts"></div>
     <div class="tablebox"><table id="tbl"><thead></thead><tbody></tbody></table></div>
@@ -480,6 +484,7 @@ td .acoes{display:flex;gap:6px;flex-wrap:wrap}
     $("btnXlsx").hidden=!res;
     $("btnPdf").textContent=res?"Emitir PDF dos colaboradores":"Emitir PDF";
     $("btnControle").hidden=res;
+    $("escalaWrap").hidden=res;
   }
 
   function showMsg(el,kind,text){el.className="msg "+kind;el.textContent=text;el.hidden=false;clearTimeout(el._t);el._t=setTimeout(()=>el.hidden=true,6000)}
@@ -1142,6 +1147,123 @@ td .acoes{display:flex;gap:6px;flex-wrap:wrap}
   });
 
   /* RELATÓRIO EM PDF: segue os filtros da aba Registros (busca, filial, período) */
+  /* ESCALA MENSAL EM PDF: uma linha por colaborador, um quadradinho por dia do mês */
+  (()=>{const d=new Date();$("fMes").value=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")})();
+  $("btnEscala").addEventListener("click",async()=>{
+    const btn=$("btnEscala");
+    if(!window.jspdf||!window.jspdf.jsPDF){$("status").textContent="O gerador de PDF não carregou. Recarregue a página e tente de novo.";return}
+    if(!$("fMes").value){mark($("fMes"),true);return}
+    mark($("fMes"),false);
+    btn.disabled=true;const txt=btn.textContent;btn.textContent="Gerando escala…";
+    try{
+      const VERDE=[30,123,60],ESCURO=[20,83,45],CINZA=[93,106,99],LINHA=[216,224,219],ZEBRA=[244,247,245],TEXTO=[29,36,32],FDS=[236,240,237];
+      const [y,m]=$("fMes").value.split("-").map(Number);
+      const ini=`${y}-${String(m).padStart(2,"0")}-01`,fim=isoDe(new Date(y,m,0)),nd=new Date(y,m,0).getDate(),hoje=today();
+      const q=norm($("q").value);
+      const dias=[...Array(nd)].map((_,i)=>`${y}-${String(m).padStart(2,"0")}-${String(i+1).padStart(2,"0")}`);
+      /* colaboradores que estiveram na reserva em algum dia do mês */
+      const resMes=reservas.filter(r=>r.entrada&&r.entrada<=fim&&(!r.saidaEfetiva||r.saidaEfetiva>=ini)&&filtraFilial(r.filial)&&(!q||norm(r.matricula+" "+r.nome).includes(q)));
+      const porMat=new Map();resMes.sort((a,b)=>String(a.nome).localeCompare(String(b.nome),"pt")).forEach(r=>{const k=r.matricula;if(!porMat.has(k))porMat.set(k,[]);porMat.get(k).push(r)});
+      const regs=movs.concat(gerarAutomaticos(fim)).filter(x=>x.data>=ini&&x.data<=fim);
+      const TRAB=x=>COB(x.situacao)||x.situacao==="disponivel_posto";
+      /* código de cada dia */
+      const codigo=x=>{
+        if(TRAB(x))return x.data>hoje?"PROG":"OK";
+        return {nao_utilizado:"X",disponivel:"DISP",ocorrencia:"OC",folga:"F"}[x.situacao]||"";
+      };
+      const linhas=[],resumo=[];
+      porMat.forEach((rs,mat)=>{
+        const r=rs[rs.length-1];
+        const naReserva=iso=>rs.some(z=>z.entrada<=iso&&(!z.saidaEfetiva||iso<z.saidaEfetiva));
+        const doMes=regs.filter(x=>x.matricula===mat);
+        const mapa={};doMes.forEach(x=>{const c=codigo(x);if(c&&(!mapa[x.data]||mapa[x.data]==="DISP"||mapa[x.data]==="X"))mapa[x.data]=c});
+        const cel=dias.map(iso=>mapa[iso]||(naReserva(iso)?"":"·"));
+        linhas.push([`${r.nome}\n${mat} · ${String(r.escala||"").toLowerCase()}`,...cel]);
+        const cnt=c=>cel.filter(v=>v===c).length;
+        const dispDias=dias.filter((iso,i)=>cel[i]==="DISP").map(iso=>+iso.slice(8));
+        resumo.push([r.nome,mat,r.filial,String(r.escala||"").toLowerCase(),String(cnt("OK")),String(cnt("PROG")),String(cnt("X")),String(cnt("OC")),String(cnt("F")),String(cnt("DISP")),dispDias.length?dispDias.join(", "):"—"]);
+      });
+      const logo=await logoDataUrl();
+      const {jsPDF}=window.jspdf;const doc=new jsPDF({orientation:"landscape",unit:"mm",format:"a4"});
+      const W=doc.internal.pageSize.getWidth(),H=doc.internal.pageSize.getHeight(),M=10;
+      const agora=new Date(),emissao=agora.toLocaleDateString("pt-BR")+" às "+agora.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"});
+      const nomeMes=MESES[m-1].charAt(0)+MESES[m-1].slice(1).toLowerCase();
+      const filSel=filiaisSel();
+      const filtroTxt=[`${nomeMes} de ${y}`,filSel.length?(filSel.length>1?"Filiais: ":"Filial: ")+filSel.join(", "):"Todas as filiais"].concat(q?["Busca: "+$("q").value.trim()]:[]).join("   |   ");
+      const feitas=new Set();
+      const moldura=()=>{
+        const pg=doc.internal.getCurrentPageInfo().pageNumber;if(feitas.has(pg))return;feitas.add(pg);
+        if(logo)doc.addImage(logo,"PNG",M,6,34,10);
+        doc.setFont("helvetica","bold");doc.setFontSize(14);doc.setTextColor(...ESCURO);doc.text("Escala Mensal da Reserva",W-M,10.5,{align:"right"});
+        doc.setFont("helvetica","normal");doc.setFontSize(8);doc.setTextColor(...CINZA);doc.text(filtroTxt,W-M,15.5,{align:"right"});
+        doc.setDrawColor(...VERDE);doc.setLineWidth(0.7);doc.line(M,19,W-M,19);
+        doc.setFontSize(7.5);doc.setTextColor(...CINZA);doc.text("Grupo SERVNAC · Emitido em "+emissao,M,H-5);
+        doc.text("Página "+pg+" de {total}",W-M,H-5,{align:"right"});
+      };
+      const check=(x,y0,w,h,cor)=>{const s2=Math.min(w,h)*0.5,cx=x+w/2,cy=y0+h/2;doc.setDrawColor(...cor);doc.setLineWidth(0.55);doc.lines([[s2*0.32,s2*0.36],[s2*0.62,-s2*0.8]],cx-s2*0.47,cy+s2*0.02)};
+      moldura();
+      /* legenda */
+      let lx=M,ly=24;
+      doc.setFontSize(7.5);
+      const leg=[["OK","Trabalhou (cobertura ou disponível no posto)"],["PROG","Programado (cobertura futura)"],["X","Não utilizado"],["DISP","Disponível"],["OC","Ocorrência"],["F","Folga"],["·","Fora da reserva"]];
+      leg.forEach(([c,t])=>{
+        doc.setDrawColor(...LINHA);doc.setFillColor(255,255,255);doc.rect(lx,ly-3.2,6.5,4.4,"FD");
+        if(c==="OK")check(lx,ly-3.2,6.5,4.4,VERDE);
+        else{doc.setFont("helvetica","bold");doc.setFontSize(c.length>2?5:6.5);doc.setTextColor(...(c==="X"?[170,38,53]:c==="OC"?[148,97,0]:c==="PROG"?ESCURO:CINZA));doc.text(c,lx+3.25,ly+0.2,{align:"center"})}
+        doc.setFont("helvetica","normal");doc.setFontSize(7.5);doc.setTextColor(...TEXTO);doc.text(t,lx+8,ly);lx+=10+doc.getTextWidth(t)+4;
+      });
+      doc.setFontSize(6.8);doc.setTextColor(...CINZA);doc.text("Disponível e Não utilizado são calculados pela escala, nos dias de trabalho sem lançamento. Dias em branco: dia de folga pela escala, sem lançamento.",M,ly+5.5);
+      /* tabela 1: escala */
+      const DS=["D","S","T","Q","Q","S","S"];
+      const head=[["Colaborador",...dias.map(iso=>`${+iso.slice(8)}\n${DS[new Date(iso+"T12:00:00").getDay()]}`)]];
+      const fds=new Set(dias.map((iso,i)=>{const w=new Date(iso+"T12:00:00").getDay();return w===0||w===6?i+1:-1}));
+      const colW=(W-2*M-46)/nd;
+      const cs={0:{cellWidth:46,halign:"left",fontSize:7}};for(let i=1;i<=nd;i++)cs[i]={cellWidth:colW,halign:"center"};
+      doc.autoTable({startY:ly+9,head,body:linhas.length?linhas:[[{content:"Nenhum colaborador na reserva nesse mês com esses filtros.",colSpan:nd+1,styles:{halign:"center",textColor:CINZA,fontStyle:"italic"}}]],
+        theme:"grid",margin:{top:24,left:M,right:M,bottom:11},
+        styles:{font:"helvetica",fontSize:6,cellPadding:{top:1.6,bottom:1.6,left:0.6,right:0.6},textColor:TEXTO,lineColor:LINHA,lineWidth:0.15,valign:"middle",halign:"center",minCellHeight:8},
+        headStyles:{fillColor:VERDE,textColor:255,fontStyle:"bold",fontSize:6.2,cellPadding:{top:1,bottom:1,left:0.3,right:0.3}},
+        columnStyles:cs,
+        didParseCell:d=>{
+          const v=d.cell.raw;
+          if(d.section==="head"&&d.column.index>0&&String(d.cell.raw).startsWith(String(+dias[d.column.index-1].slice(8)))&&dias[d.column.index-1]===hoje)d.cell.styles.fillColor=ESCURO;
+          if(d.section!=="body"||d.column.index===0)return;
+          if(fds.has(d.column.index))d.cell.styles.fillColor=FDS;
+          d.cell.styles.fontStyle="bold";
+          if(v==="OK"){d.cell.text=[""];}
+          else if(v==="X"){d.cell.styles.textColor=[170,38,53];d.cell.styles.fontSize=7}
+          else if(v==="OC"){d.cell.styles.textColor=[148,97,0]}
+          else if(v==="PROG"){d.cell.styles.textColor=ESCURO;d.cell.styles.fontSize=4.6;d.cell.styles.fillColor=[220,240,226]}
+          else if(v==="DISP"){d.cell.styles.textColor=CINZA;d.cell.styles.fontSize=4.6}
+          else if(v==="·"){d.cell.styles.textColor=[180,186,182];d.cell.styles.fillColor=[248,249,248]}
+          else if(v==="F"){d.cell.styles.textColor=CINZA}
+        },
+        didDrawCell:d=>{if(d.section==="body"&&d.column.index>0&&d.cell.raw==="OK")check(d.cell.x,d.cell.y,d.cell.width,d.cell.height,VERDE)},
+        didDrawPage:()=>moldura()});
+      /* tabela 2: resumo */
+      let y2=doc.lastAutoTable.finalY+9;if(y2>H-40){doc.addPage();moldura();y2=27}
+      doc.setFont("helvetica","bold");doc.setFontSize(11);doc.setTextColor(...ESCURO);doc.text("Resumo do mês por colaborador",M,y2);
+      const tot=i=>String(resumo.reduce((a,r)=>a+(+r[i]||0),0));
+      const corpo=resumo.length?resumo.concat([[{content:"TOTAL",colSpan:4,styles:{fontStyle:"bold",halign:"right"}},tot(4),tot(5),tot(6),tot(7),tot(8),tot(9),""]]):[[{content:"Nada no período.",colSpan:11,styles:{halign:"center",textColor:CINZA,fontStyle:"italic"}}]];
+      const n={halign:"center",cellWidth:19};
+      doc.autoTable({startY:y2+2.5,head:[["Colaborador","Matrícula","Filial","Escala","Trabalhou","Programado","Não utilizado","Ocorrência","Folga","Disponível","Dias disponíveis"]],body:corpo,
+        theme:"grid",margin:{top:24,left:M,right:M,bottom:11},
+        styles:{font:"helvetica",fontSize:7.6,cellPadding:1.6,textColor:TEXTO,lineColor:LINHA,lineWidth:0.15,valign:"middle"},
+        headStyles:{fillColor:VERDE,textColor:255,fontStyle:"bold",fontSize:7.4,halign:"center"},alternateRowStyles:{fillColor:ZEBRA},
+        columnStyles:{0:{cellWidth:56},1:{cellWidth:18,halign:"center"},2:{cellWidth:13,halign:"center"},3:{cellWidth:15,halign:"center"},4:n,5:n,6:n,7:n,8:{halign:"center",cellWidth:14},9:n},
+        didParseCell:d=>{if(d.section!=="body")return;const i=d.column.index;
+          if(i===4&&+d.cell.raw>0){d.cell.styles.textColor=VERDE;d.cell.styles.fontStyle="bold"}
+          if(i===6&&+d.cell.raw>0){d.cell.styles.textColor=[170,38,53];d.cell.styles.fontStyle="bold"}
+          if(i===7&&+d.cell.raw>0){d.cell.styles.textColor=[148,97,0];d.cell.styles.fontStyle="bold"}
+          if(d.row.index===corpo.length-1&&resumo.length){d.cell.styles.fillColor=[228,238,231];d.cell.styles.fontStyle="bold"}},
+        didDrawPage:()=>moldura()});
+      if(typeof doc.putTotalPages==="function")doc.putTotalPages("{total}");
+      doc.save(`Escala_Mensal_Reserva_${MESES[m-1]}_${y}.pdf`);
+      $("status").textContent=`Escala de ${nomeMes.toLowerCase()} gerada com ${linhas.length} colaboradores.`;
+    }catch(e){console.error(e);$("status").textContent="Não foi possível gerar a escala. Recarregue a página e tente de novo."}
+    finally{btn.disabled=false;btn.textContent=txt}
+  });
+
   async function logoDataUrl(){
     try{const b=await (await fetch("logo-servnac.png")).blob();
       return await new Promise((ok,er)=>{const fr=new FileReader();fr.onload=()=>ok(fr.result);fr.onerror=er;fr.readAsDataURL(b)})}
