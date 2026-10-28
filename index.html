@@ -425,6 +425,10 @@ td .acoes{display:flex;gap:6px;flex-wrap:wrap}
         <label class="f" style="flex:0 1 170px"><span>Mês da escala</span><input id="fMes" type="month"></label>
         <button class="btn primary" type="button" id="btnEscala">Emitir escala mensal (PDF)</button>
       </span>
+      <span id="cobWrap" style="display:flex;gap:8px;flex-wrap:wrap" hidden>
+        <button class="btn ghost" type="button" id="btnCobXlsx">Relatório de coberturas (Excel)</button>
+        <button class="btn primary" type="button" id="btnCobPdf">Relatório de coberturas (PDF)</button>
+      </span>
     </div>
     <div class="counts" id="counts"></div>
     <div class="tablebox"><table id="tbl"><thead></thead><tbody></tbody></table></div>
@@ -484,7 +488,7 @@ td .acoes{display:flex;gap:6px;flex-wrap:wrap}
     $("btnXlsx").hidden=!res;
     $("btnPdf").textContent=res?"Emitir PDF dos colaboradores":"Emitir PDF";
     $("btnControle").hidden=res;
-    $("escalaWrap").hidden=res;
+    $("escalaWrap").hidden=res;$("cobWrap").hidden=res;
   }
 
   function showMsg(el,kind,text){el.className="msg "+kind;el.textContent=text;el.hidden=false;clearTimeout(el._t);el._t=setTimeout(()=>el.hidden=true,6000)}
@@ -1154,6 +1158,91 @@ td .acoes{display:flex;gap:6px;flex-wrap:wrap}
   });
 
   /* RELATÓRIO EM PDF: segue os filtros da aba Registros (busca, filial, período) */
+  /* RELATÓRIO DE COBERTURAS: quem da reserva cobriu quem, onde e quando.
+     Usa só os lançamentos de cobertura (Em cobertura e Programado) e segue os filtros de Registros. */
+  function coberturasFiltradas(){
+    const ant=sub;sub="mov";
+    const l=filtrar(movs,"data").filter(x=>COB(x.situacao));
+    sub=ant;
+    return l.sort((a,b)=>(a.data||"").localeCompare(b.data||"")||String(a.nome).localeCompare(String(b.nome),"pt"));
+  }
+  const dtHora=s=>{if(!s)return "";const d=new Date(s);return isNaN(d)?"":d};
+  const fmtDataHora=s=>{const d=dtHora(s);return d?d.toLocaleDateString("pt-BR")+" "+d.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"}):""};
+  const filtrosTxt=()=>{const fs=filiaisSel(),de=$("fDe").value,ate=$("fAte").value,q=$("q").value.trim();
+    return ["Período: "+(de||ate?(de?fmt(de):"início")+" a "+(ate?fmt(ate):"hoje"):"todo o histórico"),fs.length?(fs.length>1?"Filiais: ":"Filial: ")+fs.join(", "):"Todas as filiais"]
+      .concat($("fTipo").value?["Tipo: "+$("fTipo").options[$("fTipo").selectedIndex].text]:[],q?["Busca: "+q]:[]).join("   |   ")};
+  const COLS_COB=["Tipo","Posto","Data","MatriculaSubstituto","NomeSubstituto","Filial","Matricula","Nome","Horario","Turno","Escala","DataInput"];
+  $("btnCobXlsx").addEventListener("click",()=>{
+    if(!window.XLSX){$("status").textContent="O gerador de planilha não carregou. Recarregue a página e tente de novo.";return}
+    const l=coberturasFiltradas();
+    if(!l.length){$("status").textContent="Nenhuma cobertura com esses filtros.";return}
+    const linhas=l.map(x=>({Tipo:x.motivo||"",Posto:x.local||"",Data:dt(x.data),MatriculaSubstituto:x.matricula,NomeSubstituto:x.nome,Filial:x.filial||(reservaDoLanc(x).filial||""),
+      Matricula:x.matCoberto||"",Nome:x.nomeCoberto||"",Horario:x.horario||"",Turno:x.turno||"",Escala:x.escalaCoberto||x.escala||"",DataInput:dtHora(x.criadoEm)}));
+    const ws=XLSX.utils.json_to_sheet(linhas,{header:COLS_COB,cellDates:true});
+    /* formatos: data e data/hora; matrícula e filial como texto */
+    const rg=XLSX.utils.decode_range(ws["!ref"]);
+    for(let r=1;r<=rg.e.r;r++){
+      const c=(col)=>ws[XLSX.utils.encode_cell({r,c:col})];
+      if(c(2))c(2).z="dd/mm/yyyy";
+      if(c(11))c(11).z="dd/mm/yyyy hh:mm";
+      [3,5,6].forEach(k=>{if(c(k)){c(k).t="s";c(k).v=String(c(k).v)}});
+    }
+    ws["!autofilter"]={ref:ws["!ref"]};
+    ws["!cols"]=[24,26,11,20,36,7,11,36,18,10,8,17].map(w=>({wch:w}));
+    const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,"Coberturas");
+    XLSX.writeFile(wb,`Coberturas_Reserva_${today()}.xlsx`,{cellDates:true});
+    $("status").textContent=`Planilha de coberturas gerada com ${l.length} ${l.length===1?"lançamento":"lançamentos"}.`;
+  });
+  $("btnCobPdf").addEventListener("click",async()=>{
+    const btn=$("btnCobPdf");
+    if(!window.jspdf||!window.jspdf.jsPDF){$("status").textContent="O gerador de PDF não carregou. Recarregue a página e tente de novo.";return}
+    const l=coberturasFiltradas();
+    if(!l.length){$("status").textContent="Nenhuma cobertura com esses filtros.";return}
+    btn.disabled=true;const txt=btn.textContent;btn.textContent="Gerando PDF…";
+    try{
+      const VERDE=[30,123,60],ESCURO=[20,83,45],CINZA=[93,106,99],LINHA=[216,224,219],ZEBRA=[244,247,245],TEXTO=[29,36,32],GRUPO=[228,238,231];
+      const hoje=today(),logo=await logoDataUrl();
+      const {jsPDF}=window.jspdf;const doc=new jsPDF({orientation:"landscape",unit:"mm",format:"a4"});
+      const W=doc.internal.pageSize.getWidth(),H=doc.internal.pageSize.getHeight(),M=10;
+      const agora=new Date(),emissao=agora.toLocaleDateString("pt-BR")+" às "+agora.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"});
+      const ft=filtrosTxt(),feitas=new Set();
+      const moldura=()=>{const pg=doc.internal.getCurrentPageInfo().pageNumber;if(feitas.has(pg))return;feitas.add(pg);
+        if(logo)doc.addImage(logo,"PNG",M,6,34,10);
+        doc.setFont("helvetica","bold");doc.setFontSize(14);doc.setTextColor(...ESCURO);doc.text("Relatório de Coberturas da Reserva",W-M,10.5,{align:"right"});
+        doc.setFont("helvetica","normal");doc.setFontSize(8);doc.setTextColor(...CINZA);doc.text(ft,W-M,15.5,{align:"right"});
+        doc.setDrawColor(...VERDE);doc.setLineWidth(0.7);doc.line(M,19,W-M,19);
+        doc.setFontSize(7.5);doc.text("Grupo SERVNAC · Emitido em "+emissao,M,H-5);doc.text("Página "+pg+" de {total}",W-M,H-5,{align:"right"})};
+      moldura();
+      /* indicadores */
+      const reals=l.filter(x=>x.data<=hoje).length;
+      const cards=[["Coberturas",l.length,`${reals} realizadas · ${l.length-reals} programadas`],["Colaboradores da reserva",new Set(l.map(x=>x.matricula)).size,"que fizeram cobertura"],["Titulares cobertos",new Set(l.map(x=>x.matCoberto).filter(Boolean)).size,"vigilantes substituídos"],["Postos atendidos",new Set(l.map(x=>x.local).filter(Boolean)).size,"postos diferentes"]];
+      const gap=4,cw=(W-2*M-gap*3)/4;
+      cards.forEach(([rot,v,s2],i)=>{const x=M+i*(cw+gap),d=i===0;doc.setFillColor(...(d?VERDE:ZEBRA));doc.setDrawColor(...(d?VERDE:LINHA));doc.setLineWidth(0.2);doc.roundedRect(x,23,cw,17,1.5,1.5,"FD");
+        doc.setFont("helvetica","bold");doc.setFontSize(16);doc.setTextColor(...(d?[255,255,255]:ESCURO));doc.text(String(v),x+3,31.5);
+        doc.setFont("helvetica","normal");doc.setFontSize(7.2);doc.setTextColor(...(d?[230,245,235]:CINZA));doc.text(rot.toUpperCase()+" · "+s2,x+3,37)});
+      /* tabela agrupada por colaborador da reserva */
+      const grupos=new Map();l.forEach(x=>{const k=x.matricula;if(!grupos.has(k))grupos.set(k,[]);grupos.get(k).push(x)});
+      const ordem=[...grupos.entries()].sort((a,b)=>String(a[1][0].nome).localeCompare(String(b[1][0].nome),"pt"));
+      const body=[];
+      ordem.forEach(([mat,lst])=>{
+        const r=reservaDoLanc(lst[0]);
+        body.push([{content:`${lst[0].nome}   ·   Matrícula ${mat}   ·   Filial ${lst[0].filial||r.filial||"—"}   ·   ${r.tipo||""}   ·   ${lst.length} ${lst.length===1?"cobertura":"coberturas"}`,colSpan:8,styles:{fillColor:GRUPO,textColor:ESCURO,fontStyle:"bold",fontSize:8}}]);
+        lst.forEach(x=>body.push([fmt(x.data)+(x.data>hoje?"\nprogramado":""),x.local||"—",[x.turno,x.horario].filter(Boolean).join("\n")||"—",x.matCoberto||"—",x.nomeCoberto||"—",String(x.escalaCoberto||"").toLowerCase()||"—",x.motivo||"—",fmtDataHora(x.criadoEm)||"—"]));
+      });
+      doc.autoTable({startY:45,head:[["Data","Posto","Turno / horário","Matrícula titular","Nome do titular (coberto)","Escala","Tipo da cobertura","Incluído em"]],body,
+        theme:"grid",margin:{top:24,left:M,right:M,bottom:11},
+        styles:{font:"helvetica",fontSize:7.6,cellPadding:1.6,textColor:TEXTO,lineColor:LINHA,lineWidth:0.15,valign:"middle"},
+        headStyles:{fillColor:VERDE,textColor:255,fontStyle:"bold",fontSize:7.6},
+        columnStyles:{0:{cellWidth:20,halign:"center"},1:{cellWidth:44},2:{cellWidth:28},3:{cellWidth:24,halign:"center"},5:{cellWidth:14,halign:"center"},6:{cellWidth:40},7:{cellWidth:26,halign:"center"}},
+        didParseCell:d=>{if(d.section==="body"&&d.column.index===0&&String(d.cell.raw).includes("programado")){d.cell.styles.textColor=ESCURO;d.cell.styles.fontStyle="bold"}},
+        didDrawPage:()=>moldura()});
+      if(typeof doc.putTotalPages==="function")doc.putTotalPages("{total}");
+      doc.save(`Relatorio_Coberturas_Reserva_${hoje}.pdf`);
+      $("status").textContent=`Relatório de coberturas gerado com ${l.length} ${l.length===1?"lançamento":"lançamentos"}.`;
+    }catch(e){console.error(e);$("status").textContent="Não foi possível gerar o PDF. Recarregue a página e tente de novo."}
+    finally{btn.disabled=false;btn.textContent=txt}
+  });
+
   /* ESCALA MENSAL EM PDF: uma linha por colaborador, um quadradinho por dia do mês */
   (()=>{const d=new Date();$("fMes").value=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")})();
   $("btnEscala").addEventListener("click",async()=>{
