@@ -476,7 +476,7 @@ td .acoes{display:flex;gap:6px;flex-wrap:wrap}
   document.querySelectorAll(".subtabs button").forEach(b=>b.addEventListener("click",()=>{
     sub=b.dataset.sub;
     document.querySelectorAll(".subtabs button").forEach(x=>x.setAttribute("aria-pressed",x===b));
-    $("fSitWrap").hidden=sub!=="mov";$("fStatusWrap").hidden=sub!=="res";$("fTipoWrap").hidden=sub!=="res";ajustarBotoes();render();
+    $("fSitWrap").hidden=sub!=="mov";$("fStatusWrap").hidden=sub!=="res";ajustarBotoes();render();
   }));
   function ajustarBotoes(){
     const res=sub==="res";
@@ -936,12 +936,18 @@ td .acoes{display:flex;gap:6px;flex-wrap:wrap}
       if(sub==="res"&&st==="ativo"&&x.saidaEfetiva)return false;
       if(sub==="res"&&st==="saiu"&&!x.saidaEfetiva)return false;
       if(sub==="res"&&!casaTipo(x,$("fTipo").value))return false;
+      if(sub==="mov"&&$("fTipo").value&&!casaTipo(reservaDoLanc(x),$("fTipo").value))return false;
       const d=x[dateField]||"";if(de&&d<de)return false;if(ate&&d>ate)return false;
       if(q&&!norm([x.matricula,x.nome,x.local,x.matCoberto,x.nomeCoberto].join(" ")).includes(q))return false;
       return true;
     });
   }
   function podeExcluir(){return true}
+  /* reserva a que um lançamento pertence (pela matrícula e pela data) */
+  function reservaDoLanc(x){
+    const l=reservas.filter(r=>r.matricula===x.matricula).sort((a,b)=>(b.entrada||"").localeCompare(a.entrada||""));
+    return l.find(r=>(r.entrada||"")<=(x.data||"")&&(!r.saidaEfetiva||x.data<r.saidaEfetiva))||l[0]||{};
+  }
   const ehPostoR=x=>String(x.tipo||"").startsWith("RESERVA DE POSTO");
   function casaTipo(x,f){
     if(!f)return true;
@@ -1120,7 +1126,8 @@ td .acoes{display:flex;gap:6px;flex-wrap:wrap}
     if(!window.JSZip){$("status").textContent="O gerador da planilha não carregou. Recarregue a página e tente de novo.";return}
     btn.disabled=true;const txt=btn.textContent;btn.textContent="Gerando planilha…";
     try{
-      const rows=linhasControle().filter(x=>filtraFilial(x.C));
+      const tipoF=$("fTipo").value;
+      const rows=linhasControle().filter(x=>filtraFilial(x.C)&&(!tipoF||casaTipo(reservaDoLanc({matricula:x.A,data:x.K?isoDe(new Date((x.K-25569)*864e5+12*36e5)):(x.H?isoDe(new Date((x.H-25569)*864e5+12*36e5)):"")}),tipoF)));
       if(rows.length>2000)$("status").textContent=`O modelo comporta 2.000 linhas; ${rows.length-2000} registros mais recentes ficaram de fora.`;
       const mapa={};rows.slice(0,2000).forEach((x,i)=>mapa[14+i]=x);
       btn.textContent="Carregando modelo…";
@@ -1162,7 +1169,7 @@ td .acoes{display:flex;gap:6px;flex-wrap:wrap}
       const q=norm($("q").value);
       const dias=[...Array(nd)].map((_,i)=>`${y}-${String(m).padStart(2,"0")}-${String(i+1).padStart(2,"0")}`);
       /* colaboradores que estiveram na reserva em algum dia do mês */
-      const resMes=reservas.filter(r=>r.entrada&&r.entrada<=fim&&(!r.saidaEfetiva||r.saidaEfetiva>=ini)&&filtraFilial(r.filial)&&(!q||norm(r.matricula+" "+r.nome).includes(q)));
+      const resMes=reservas.filter(r=>r.entrada&&r.entrada<=fim&&(!r.saidaEfetiva||r.saidaEfetiva>=ini)&&filtraFilial(r.filial)&&casaTipo(r,$("fTipo").value)&&(!q||norm(r.matricula+" "+r.nome).includes(q)));
       const porMat=new Map();resMes.sort((a,b)=>String(a.nome).localeCompare(String(b.nome),"pt")).forEach(r=>{const k=r.matricula;if(!porMat.has(k))porMat.set(k,[]);porMat.get(k).push(r)});
       const regs=movs.concat(gerarAutomaticos(fim)).filter(x=>x.data>=ini&&x.data<=fim);
       const TRAB=x=>COB(x.situacao)||x.situacao==="disponivel_posto";
@@ -1189,7 +1196,7 @@ td .acoes{display:flex;gap:6px;flex-wrap:wrap}
       const agora=new Date(),emissao=agora.toLocaleDateString("pt-BR")+" às "+agora.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"});
       const nomeMes=MESES[m-1].charAt(0)+MESES[m-1].slice(1).toLowerCase();
       const filSel=filiaisSel();
-      const filtroTxt=[`${nomeMes} de ${y}`,filSel.length?(filSel.length>1?"Filiais: ":"Filial: ")+filSel.join(", "):"Todas as filiais"].concat(q?["Busca: "+$("q").value.trim()]:[]).join("   |   ");
+      const filtroTxt=[`${nomeMes} de ${y}`].concat($("fTipo").value?["Tipo: "+$("fTipo").options[$("fTipo").selectedIndex].text]:[],[filSel.length?(filSel.length>1?"Filiais: ":"Filial: ")+filSel.join(", "):"Todas as filiais"]).concat(q?["Busca: "+$("q").value.trim()]:[]).join("   |   ");
       const feitas=new Set();
       const moldura=()=>{
         const pg=doc.internal.getCurrentPageInfo().pageNumber;if(feitas.has(pg))return;feitas.add(pg);
@@ -1281,7 +1288,7 @@ td .acoes{display:flex;gap:6px;flex-wrap:wrap}
       const filSel=filiaisSel(),de=$("fDe").value,ate=$("fAte").value,q=$("q").value.trim();
       const stTxt={ativo:"Na reserva",saiu:"Já saíram","":"Todos"}[$("fStatus").value];
       const tipoTxt=$("fTipo").options[$("fTipo").selectedIndex].text;
-      const filtroTxt=(modoRes?["Status: "+stTxt].concat($("fTipo").value?["Tipo: "+tipoTxt]:[]):[]).concat([(filSel.length?(filSel.length>1?"Filiais: ":"Filial: ")+filSel.map(f=>filSel.length>2?f:f+" · "+(FILIAIS[f]||"")).join(", "):"Filial: Todas"),"Período: "+(de||ate?(de?fmt(de):"início")+" a "+(ate?fmt(ate):"hoje"):"Todo o histórico")].concat(q?["Busca: "+q]:[])).join("   |   ");
+      const filtroTxt=(modoRes?["Status: "+stTxt]:[]).concat($("fTipo").value?["Tipo: "+tipoTxt]:[]).concat([(filSel.length?(filSel.length>1?"Filiais: ":"Filial: ")+filSel.map(f=>filSel.length>2?f:f+" · "+(FILIAIS[f]||"")).join(", "):"Filial: Todas"),"Período: "+(de||ate?(de?fmt(de):"início")+" a "+(ate?fmt(ate):"hoje"):"Todo o histórico")].concat(q?["Busca: "+q]:[])).join("   |   ");
       const logo=await logoDataUrl();
       const {jsPDF}=window.jspdf;const doc=new jsPDF({orientation:"landscape",unit:"mm",format:"a4"});
       const W=doc.internal.pageSize.getWidth(),H=doc.internal.pageSize.getHeight(),M=12;
