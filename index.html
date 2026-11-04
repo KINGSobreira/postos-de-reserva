@@ -1181,6 +1181,22 @@ td .acoes{display:flex;gap:6px;flex-wrap:wrap}
   });
 
   /* RELATÓRIO EM PDF: segue os filtros da aba Registros (busca, filial, período) */
+  /* RUBRICAS DAS OCORRÊNCIAS (sigla do motivo) */
+  const RUBRICAS={"AFASTAMENTO":"AFA","ATESTADO MEDICO":"ATE","CASAMENTO":"CAS","LICENCA CASAMENTO":"CAS","FALTA NAO JUSTIFICADA":"FNJ","FERIAS":"FER","INTEGRACAO":"INT","SUSPENSAO":"SUS","FERIADO":"FRD",
+    "LICENCA PATERNIDADE":"PAT","LICENCA OBITO":"OBT","ACOMPANHAMENTO DE FILHO MENOR DE 6 ANOS":"ACF","FOLGA ESCALA 6X1":"F61","FOLGA ESCALA 5X1":"F51","FOLGA TRE":"TRE","RECICLAGEM":"REC",
+    "ABANDONO DE EMPREGO":"ABE","ABONDONO DE EMPREGO":"ABE","DEVOLUCAO":"DEV","DESLIGAMENTO":"DES","COBERTURA DE FOLGA":"CBF","IMPLANTACAO":"IMP","CONVOCACAO SINDICAL":"SIN"};
+  const rubrica=m=>RUBRICAS[norm(String(m||"").trim()).toUpperCase()]||"OC";
+  const RUB_SET=new Set(Object.values(RUBRICAS).concat("OC"));
+  /* agrupa linhas de tabela por filial, com uma faixa de título para cada filial */
+  function agrupaFilial(itens,getF,cols,toRows,rotulo){
+    const out=[],fs=[...new Set(itens.map(i=>getF(i)||""))].sort();
+    fs.forEach(f=>{const g=itens.filter(i=>(getF(i)||"")===f);
+      out.push([{content:`FILIAL ${f||"—"}${FILIAIS[f]?"  ·  "+FILIAIS[f]:""}${rotulo?"   ·   "+rotulo(g):""}`,colSpan:cols,styles:{fillColor:[20,83,45],textColor:255,fontStyle:"bold",fontSize:8,halign:"left"}}]);
+      toRows(g).forEach(r=>out.push(r))});
+    return out;
+  }
+  const qtd=(n,s1,s2)=>`${n} ${n===1?s1:s2}`;
+
   /* RELATÓRIO DE COBERTURAS: quem da reserva cobriu quem, onde e quando.
      Usa só os lançamentos de cobertura (Em cobertura e Programado) e segue os filtros de Registros. */
   function coberturasFiltradas(){
@@ -1245,13 +1261,13 @@ td .acoes{display:flex;gap:6px;flex-wrap:wrap}
         doc.setFont("helvetica","normal");doc.setFontSize(7.2);doc.setTextColor(...(d?[230,245,235]:CINZA));doc.text(rot.toUpperCase()+" · "+s2,x+3,37)});
       /* tabela agrupada por colaborador da reserva */
       const grupos=new Map();l.forEach(x=>{const k=x.matricula;if(!grupos.has(k))grupos.set(k,[]);grupos.get(k).push(x)});
+      const filDe=lst=>lst[0].filial||reservaDoLanc(lst[0]).filial||"";
       const ordem=[...grupos.entries()].sort((a,b)=>String(a[1][0].nome).localeCompare(String(b[1][0].nome),"pt"));
-      const body=[];
-      ordem.forEach(([mat,lst])=>{
+      const body=agrupaFilial(ordem,([,lst])=>filDe(lst),8,gr=>{const out=[];gr.forEach(([mat,lst])=>{const body=out;
         const r=reservaDoLanc(lst[0]);
         body.push([{content:`${lst[0].nome}   ·   Matrícula ${mat}   ·   Filial ${lst[0].filial||r.filial||"—"}   ·   ${r.tipo||""}   ·   ${lst.length} ${lst.length===1?"cobertura":"coberturas"}`,colSpan:8,styles:{fillColor:GRUPO,textColor:ESCURO,fontStyle:"bold",fontSize:8}}]);
         lst.forEach(x=>body.push([fmt(x.data)+(x.data>hoje?"\nprogramado":""),x.local||"—",[x.turno,x.horario].filter(Boolean).join("\n")||"—",x.matCoberto||"—",x.nomeCoberto||"—",String(x.escalaCoberto||"").toLowerCase()||"—",x.motivo||"—",fmtDataHora(x.criadoEm)||"—"]));
-      });
+      });return out},gr=>qtd(gr.reduce((a,[,l])=>a+l.length,0),"cobertura","coberturas")+" · "+qtd(gr.length,"colaborador","colaboradores"));
       doc.autoTable({startY:45,head:[["Data","Posto","Turno / horário","Matrícula titular","Nome do titular (coberto)","Escala","Tipo da cobertura","Incluído em"]],body,
         theme:"grid",margin:{top:24,left:M,right:M,bottom:11},
         styles:{font:"helvetica",fontSize:7.6,cellPadding:1.6,textColor:TEXTO,lineColor:LINHA,lineWidth:0.15,valign:"middle"},
@@ -1296,21 +1312,26 @@ td .acoes{display:flex;gap:6px;flex-wrap:wrap}
       /* código de cada dia */
       const codigo=x=>{
         if(TRAB(x))return x.data>hoje?"PROG":"OK";
-        return {nao_utilizado:"X",disponivel:"DISP",ocorrencia:"OC",folga:"F"}[x.situacao]||"";
+        if(x.situacao==="ocorrencia")return rubrica(x.motivo);
+        return {nao_utilizado:"X",disponivel:"DISP",folga:"F"}[x.situacao]||"";
       };
-      const linhas=[],resumo=[];
+      const linhasF=[],resumoF=[],usadas=new Map();
       porMat.forEach((rs,mat)=>{
         const r=rs[rs.length-1];
         const naReserva=iso=>rs.some(z=>z.entrada<=iso&&(!z.saidaEfetiva||iso<z.saidaEfetiva));
         const doMes=regs.filter(x=>x.matricula===mat);
         const mapa={};doMes.forEach(x=>{const c=codigo(x);if(c&&(!mapa[x.data]||mapa[x.data]==="DISP"||mapa[x.data]==="X"))mapa[x.data]=c});
         const cel=dias.map(iso=>mapa[iso]||(naReserva(iso)?"":"·"));
-        linhas.push([`${r.nome}\n${mat} · ${String(r.escala||"").toLowerCase()}`,...cel]);
-        const cnt=c=>cel.filter(v=>v===c).length;
+        linhasF.push({f:r.filial,row:[`${r.nome}\n${mat} · ${String(r.escala||"").toLowerCase()}`,...cel]});
+        doMes.filter(x=>x.situacao==="ocorrencia").forEach(x=>usadas.set(rubrica(x.motivo),x.motivo||"Ocorrência"));
+        const cnt=c=>c==="OC"?cel.filter(v=>RUB_SET.has(v)).length:cel.filter(v=>v===c).length;
         const dispDias=dias.filter((iso,i)=>cel[i]==="DISP").map(iso=>+iso.slice(8));
-        resumo.push([r.nome,mat,r.filial,String(r.escala||"").toLowerCase(),String(cnt("OK")),String(cnt("PROG")),String(cnt("X")),String(cnt("OC")),String(cnt("F")),String(cnt("DISP")),dispDias.length?dispDias.join(", "):"—"]);
+        resumoF.push({f:r.filial,row:[r.nome,mat,r.filial,String(r.escala||"").toLowerCase(),String(cnt("OK")),String(cnt("PROG")),String(cnt("X")),String(cnt("OC")),String(cnt("F")),String(cnt("DISP")),dispDias.length?dispDias.join(", "):"—"]});
       });
-      const nomeMes=MESES[m-1].charAt(0)+MESES[m-1].slice(1).toLowerCase();totalColab=Math.max(totalColab,linhas.length);
+      const linhas=agrupaFilial(linhasF,x=>x.f,nd+1,g=>g.map(x=>x.row),g=>qtd(g.length,"colaborador","colaboradores"));
+      const resumo=resumoF.map(x=>x.row);
+      const resumoAgr=agrupaFilial(resumoF,x=>x.f,11,g=>g.map(x=>x.row),g=>qtd(g.length,"colaborador","colaboradores"));
+      const nomeMes=MESES[m-1].charAt(0)+MESES[m-1].slice(1).toLowerCase();totalColab=Math.max(totalColab,linhasF.length);
       const filSel=filiaisSel();
       filtroTxt=[`${nomeMes} de ${y}`].concat($("fTipo").value?["Tipo: "+$("fTipo").options[$("fTipo").selectedIndex].text]:[],[filSel.length?(filSel.length>1?"Filiais: ":"Filial: ")+filSel.join(", "):"Todas as filiais"]).concat(q?["Busca: "+$("q").value.trim()]:[]).join("   |   ");
       
@@ -1328,14 +1349,16 @@ td .acoes{display:flex;gap:6px;flex-wrap:wrap}
       /* legenda */
       let lx=M,ly=24;
       doc.setFontSize(7.5);
-      const leg=[["OK","Trabalhou (cobertura ou disponível no posto)"],["PROG","Programado (cobertura futura)"],["X","Não utilizado"],["DISP","Disponível"],["OC","Ocorrência"],["F","Folga"],["·","Fora da reserva"]];
+      const leg=[["OK","Trabalhou (cobertura ou disponível no posto)"],["PROG","Programado (cobertura futura)"],["X","Não utilizado"],["DISP","Disponível"],["ATE","Ocorrência (sigla do motivo)"],["F","Folga"],["·","Fora da reserva"]];
       leg.forEach(([c,t])=>{
         doc.setDrawColor(...LINHA);doc.setFillColor(255,255,255);doc.rect(lx,ly-3.2,6.5,4.4,"FD");
         if(c==="OK")check(lx,ly-3.2,6.5,4.4,VERDE);
-        else{doc.setFont("helvetica","bold");doc.setFontSize(c.length>2?5:6.5);doc.setTextColor(...(c==="X"?[170,38,53]:c==="OC"?[148,97,0]:c==="PROG"?ESCURO:CINZA));doc.text(c,lx+3.25,ly+0.2,{align:"center"})}
+        else{doc.setFont("helvetica","bold");doc.setFontSize(c.length>2?5:6.5);doc.setTextColor(...(c==="X"?[170,38,53]:RUB_SET.has(c)?[148,97,0]:c==="PROG"?ESCURO:CINZA));doc.text(c,lx+3.25,ly+0.2,{align:"center"})}
         doc.setFont("helvetica","normal");doc.setFontSize(7.5);doc.setTextColor(...TEXTO);doc.text(t,lx+8,ly);lx+=10+doc.getTextWidth(t)+4;
       });
       doc.setFontSize(6.8);doc.setTextColor(...CINZA);doc.text("Disponível e Não utilizado são calculados pela escala, nos dias de trabalho sem lançamento. Dias em branco: dia de folga pela escala, sem lançamento.",M,ly+5.5);
+      if(usadas.size){const t="Ocorrências no mês:  "+[...usadas.entries()].sort().map(([c,mt])=>`${c} = ${tituloCaso(mt)}`).join("   ·   ");
+        doc.setFont("helvetica","bold");doc.setTextColor(148,97,0);doc.text(doc.splitTextToSize(t,W-2*M),M,ly+9.5);doc.setFont("helvetica","normal");ly+=4*Math.max(1,doc.splitTextToSize(t,W-2*M).length)}
       /* tabela 1: escala */
       const DS=["D","S","T","Q","Q","S","S"];
       const head=[["Colaborador",...dias.map(iso=>`${+iso.slice(8)}\n${DS[new Date(iso+"T12:00:00").getDay()]}`)]];
@@ -1355,7 +1378,7 @@ td .acoes{display:flex;gap:6px;flex-wrap:wrap}
           d.cell.styles.fontStyle="bold";
           if(v==="OK"){d.cell.text=[""];}
           else if(v==="X"){d.cell.styles.textColor=[170,38,53];d.cell.styles.fontSize=7}
-          else if(v==="OC"){d.cell.styles.textColor=[148,97,0]}
+          else if(RUB_SET.has(v)){d.cell.styles.textColor=[148,97,0];if(String(v).length>2)d.cell.styles.fontSize=4.8}
           else if(v==="PROG"){d.cell.styles.textColor=ESCURO;d.cell.styles.fontSize=4.6;d.cell.styles.fillColor=[220,240,226]}
           else if(v==="DISP"){d.cell.styles.textColor=CINZA;d.cell.styles.fontSize=4.6}
           else if(v==="·"){d.cell.styles.textColor=[180,186,182];d.cell.styles.fillColor=[248,249,248]}
@@ -1367,7 +1390,7 @@ td .acoes{display:flex;gap:6px;flex-wrap:wrap}
       let y2=doc.lastAutoTable.finalY+9;if(y2>H-40){doc.addPage();moldura();y2=27}
       doc.setFont("helvetica","bold");doc.setFontSize(11);doc.setTextColor(...ESCURO);doc.text("Resumo do mês por colaborador",M,y2);
       const tot=i=>String(resumo.reduce((a,r)=>a+(+r[i]||0),0));
-      const corpo=resumo.length?resumo.concat([[{content:"TOTAL",colSpan:4,styles:{fontStyle:"bold",halign:"right"}},tot(4),tot(5),tot(6),tot(7),tot(8),tot(9),""]]):[[{content:"Nada no período.",colSpan:11,styles:{halign:"center",textColor:CINZA,fontStyle:"italic"}}]];
+      const corpo=resumo.length?resumoAgr.concat([[{content:"TOTAL",colSpan:4,styles:{fontStyle:"bold",halign:"right"}},tot(4),tot(5),tot(6),tot(7),tot(8),tot(9),""]]):[[{content:"Nada no período.",colSpan:11,styles:{halign:"center",textColor:CINZA,fontStyle:"italic"}}]];
       const n={halign:"center",cellWidth:19};
       doc.autoTable({startY:y2+2.5,head:[["Colaborador","Matrícula","Filial","Escala","Trabalhou","Programado","Não utilizado","Ocorrência","Folga","Disponível","Dias disponíveis"]],body:corpo,
         theme:"grid",margin:{top:24,left:M,right:M,bottom:11},
@@ -1456,29 +1479,34 @@ td .acoes{display:flex;gap:6px;flex-wrap:wrap}
       const porMat={};
       mv.forEach(x=>{const k=x.matricula;(porMat[k]=porMat[k]||{nome:x.nome,filial:x.filial,escala:x.escala,c:{}}).c[x.situacao]=(porMat[k].c[x.situacao]||0)+1});
       const ordem=["cobertura","programado","disponivel_posto","disponivel","nao_utilizado","folga","ocorrencia"];
-      const resumo=Object.entries(porMat).sort((a,b)=>a[0].localeCompare(b[0],"pt",{numeric:true})).map(([m,o])=>{
+      const resumo0=Object.entries(porMat).sort((a,b)=>String((ultimaReserva(a[0],false)||{}).nome||a[1].nome).localeCompare(String((ultimaReserva(b[0],false)||{}).nome||b[1].nome),"pt")).map(([m,o])=>{
         const r=ultimaReserva(m,false)||{};const tot=ordem.reduce((s,k)=>s+(o.c[k]||0),0);
         return [m,r.nome||o.nome,r.filial||o.filial||"",String(r.escala||o.escala||"").toLowerCase(),...ordem.map(k=>o.c[k]?String(o.c[k]):"–"),String(tot)];
       });
+      const resumo=agrupaFilial(resumo0,r=>r[2],12,g=>g,g=>qtd(g.length,"colaborador","colaboradores"));
       const num={halign:"center",cellWidth:19};
       tabela("Resumo por colaborador (dias no período)",["Matrícula","Colaborador","Filial","Escala","Cobertura","Programado","Disp. no posto","Disponível","Não utilizado","Folga","Ocorrência","Total"],resumo,
         {0:{cellWidth:20},2:{cellWidth:14,halign:"center"},3:{cellWidth:16,halign:"center"},4:num,5:num,6:num,7:num,8:num,9:num,10:num,11:{halign:"center",cellWidth:15,fontStyle:"bold"}});
       }
       /* colaboradores na reserva */
       const resOrd=res.slice().sort((a,b)=>(a.saidaEfetiva?1:0)-(b.saidaEfetiva?1:0)||(b.entrada||"").localeCompare(a.entrada||""));
-      const resRows=resOrd.map(x=>[
+      const vencidas=new Set();
+      const resRows0=resOrd.map(x=>{const row=[
         x.matricula,x.nome,x.filial,tituloCaso(x.funcao),String(x.escala||"").toLowerCase()+(x.turno?"\n"+x.turno.toLowerCase():""),x.tipo+(x.previstaContrato?"\nPrevista em contrato: "+x.previstaContrato:""),x.motivo+(x.motivoOutro?": "+x.motivoOutro:""),fmt(x.entrada),x.previsaoSaida?fmt(x.previsaoSaida):"–",
-        x.saidaEfetiva?fmt(x.saidaEfetiva)+" · "+x.motivoSaida+(detalheSaida(x)?" ("+detalheSaida(x)+")":""):"Na reserva"]);
+        x.saidaEfetiva?fmt(x.saidaEfetiva)+" · "+x.motivoSaida+(detalheSaida(x)?" ("+detalheSaida(x)+")":""):"Na reserva"];
+        if(!x.saidaEfetiva&&x.previsaoSaida&&x.previsaoSaida<hoje)vencidas.add(row);return row});
+      const resRows=agrupaFilial(resRows0,r=>r[2],10,g=>g,g=>qtd(g.length,"colaborador","colaboradores"));
       tabela("Colaboradores na reserva",["Matrícula","Colaborador","Filial","Função","Escala","Tipo","Motivo da entrada","Entrada","Prev. saída","Saída"],resRows,
         {0:{cellWidth:18},2:{cellWidth:12,halign:"center"},4:{cellWidth:13,halign:"center"},7:{cellWidth:17,halign:"center"},8:{cellWidth:17,halign:"center"}},
-        {didParseCell:d=>{if(d.section==="body"&&d.column.index===8&&d.cell.raw!=="–"){const x=resOrd[d.row.index];if(x&&!x.saidaEfetiva&&x.previsaoSaida&&x.previsaoSaida<hoje){d.cell.styles.textColor=[170,38,53];d.cell.styles.fontStyle="bold"}}}});
+        {didParseCell:d=>{if(d.section==="body"&&d.column.index===8&&vencidas.has(d.row.raw)){d.cell.styles.textColor=[170,38,53];d.cell.styles.fontStyle="bold"}}});
       /* situações do dia */
       if(!modoRes){
-      const mvRows=mv.slice().sort((a,b)=>(a.data||"").localeCompare(b.data||"")||String(a.matricula).localeCompare(String(b.matricula),"pt",{numeric:true})).map(x=>[
-        fmt(x.data),SIT[x.situacao]||x.situacao,x.matricula,x.nome,x.filial||"",x.local?[x.local,x.turno,x.horario,x.intrajornada?"Intrajornada: "+x.intrajornada:""].filter(Boolean).join(" — "):"–",x.matCoberto?(x.matCoberto+" "+(x.nomeCoberto||"")+(x.escalaCoberto?" ("+x.escalaCoberto.toLowerCase()+")":"")):"–",x.motivo||"–"]);
+      const mvRows0=mv.slice().sort((a,b)=>(a.data||"").localeCompare(b.data||"")||String(a.nome).localeCompare(String(b.nome),"pt")).map(x=>[
+        fmt(x.data),SIT[x.situacao]||x.situacao,x.matricula,x.nome,x.filial||reservaDoLanc(x).filial||"",x.local?[x.local,x.turno,x.horario,x.intrajornada?"Intrajornada: "+x.intrajornada:""].filter(Boolean).join(" — "):"–",x.matCoberto?(x.matCoberto+" "+(x.nomeCoberto||"")+(x.escalaCoberto?" ("+x.escalaCoberto.toLowerCase()+")":"")):"–",x.situacao==="ocorrencia"&&x.motivo?rubrica(x.motivo)+" · "+x.motivo:(x.motivo||"–")]);
       const corSit={"Em cobertura":[30,123,60],"Programado":[20,83,45],"Ocorrência":[148,97,0]};
       const comMotivo=mv.some(x=>x.motivo);
-      if(!comMotivo)mvRows.forEach(r=>r.pop());
+      if(!comMotivo)mvRows0.forEach(r=>r.pop());
+      const mvRows=agrupaFilial(mvRows0,r=>r[4]||"",comMotivo?8:7,g=>g,g=>qtd(g.length,"lançamento","lançamentos"));
       tabela("Situações do dia",["Data","Situação","Matrícula","Colaborador (reserva)","Filial","Posto / turno","Titular coberto"].concat(comMotivo?["Motivo"]:[]),mvRows,
         {0:{cellWidth:17,halign:"center"},1:{cellWidth:23},2:{cellWidth:18},4:{cellWidth:12,halign:"center"}},
         {didParseCell:d=>{if(d.section==="body"&&d.column.index===1&&corSit[d.cell.raw]){d.cell.styles.textColor=corSit[d.cell.raw];d.cell.styles.fontStyle="bold"}}});
