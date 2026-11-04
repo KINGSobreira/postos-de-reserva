@@ -491,7 +491,7 @@ td .acoes{display:flex;gap:6px;flex-wrap:wrap}
     $("escalaWrap").hidden=res;$("cobWrap").hidden=res;
   }
 
-  function showMsg(el,kind,text){el.className="msg "+kind;el.textContent=text;el.hidden=false;clearTimeout(el._t);el._t=setTimeout(()=>el.hidden=true,6000)}
+  function showMsg(el,kind,text){if(kind==="err"||kind==="warn")setTimeout(()=>{try{el.scrollIntoView({block:"nearest",behavior:"smooth"})}catch(e){}},0);el.className="msg "+kind;el.textContent=text;el.hidden=false;clearTimeout(el._t);el._t=setTimeout(()=>el.hidden=true,6000)}
   function mark(el,bad){el.setAttribute("aria-invalid",bad?"true":"false");return bad}
 
   /* função "Outra": mostra o campo de texto e devolve o valor final */
@@ -526,7 +526,7 @@ td .acoes{display:flex;gap:6px;flex-wrap:wrap}
     mark($("r_saida"),false);
     if(!db)return showMsg($("r_msg"),"err","Sem conexão com a planilha. Verifique a internet e tente de novo.");
     /* não deixa cadastrar quem já está na reserva */
-    {const dup=duplicadoReserva($("r_mat").value,$("r_nome").value,edicao&&edicao.aba==="reserva"?edicao.id:null);
+    if(!(edicao&&edicao.aba==="reserva")){const dup=duplicadoReserva($("r_mat").value,$("r_nome").value,null);
      if(dup.mat){mark($("r_mat"),true);return showMsg($("r_msg"),"err",`A matrícula ${dup.mat.matricula} já está na reserva: ${dup.mat.nome}, desde ${fmt(dup.mat.entrada)}. Para mudar algo nesse cadastro, use Editar em Registros.`)}
      if(dup.nome&&$("r_submit").dataset.confirmaNome!==norm($("r_nome").value)){mark($("r_nome"),true);$("r_submit").dataset.confirmaNome=norm($("r_nome").value);
        return showMsg($("r_msg"),"warn",`Já existe ${dup.nome.nome} na reserva com a matrícula ${dup.nome.matricula}. Se for a mesma pessoa, não cadastre de novo. Se for outra pessoa com o mesmo nome, clique de novo em ${$("r_submit").textContent} para confirmar.`)}}
