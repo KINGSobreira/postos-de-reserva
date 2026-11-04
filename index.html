@@ -422,8 +422,7 @@ td .acoes{display:flex;gap:6px;flex-wrap:wrap}
       <button class="btn ghost" type="button" id="btnControle">Baixar Controle de Reservas</button>
       <button class="btn primary" type="button" id="btnPdf">Emitir PDF</button>
       <span id="escalaWrap" style="display:flex;gap:8px;align-items:end;flex-wrap:wrap" hidden>
-        <label class="f" style="flex:0 1 170px"><span>Mês da escala</span><input id="fMes" type="month"></label>
-        <button class="btn primary" type="button" id="btnEscala">Emitir escala mensal (PDF)</button>
+        <button class="btn primary" type="button" id="btnEscala" title="Usa o mês do filtro De/Até. Sem datas, usa o mês atual.">Emitir escala mensal (PDF)</button>
       </span>
       <span id="cobWrap" style="display:flex;gap:8px;flex-wrap:wrap" hidden>
         <button class="btn ghost" type="button" id="btnCobXlsx">Relatório de coberturas (Excel)</button>
@@ -1244,16 +1243,24 @@ td .acoes{display:flex;gap:6px;flex-wrap:wrap}
   });
 
   /* ESCALA MENSAL EM PDF: uma linha por colaborador, um quadradinho por dia do mês */
-  (()=>{const d=new Date();$("fMes").value=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")})();
   $("btnEscala").addEventListener("click",async()=>{
     const btn=$("btnEscala");
     if(!window.jspdf||!window.jspdf.jsPDF){$("status").textContent="O gerador de PDF não carregou. Recarregue a página e tente de novo.";return}
-    if(!$("fMes").value){mark($("fMes"),true);return}
-    mark($("fMes"),false);
     btn.disabled=true;const txt=btn.textContent;btn.textContent="Gerando escala…";
     try{
       const VERDE=[30,123,60],ESCURO=[20,83,45],CINZA=[93,106,99],LINHA=[216,224,219],ZEBRA=[244,247,245],TEXTO=[29,36,32],FDS=[236,240,237];
-      const [y,m]=$("fMes").value.split("-").map(Number);
+      /* meses vêm do filtro De/Até de cima (um mês por bloco); sem datas, o mês atual */
+      const de=$("fDe").value,ate=$("fAte").value,base=de||ate||today();
+      let ym=[+base.slice(0,4),+base.slice(5,7)];const fimYm=ate?[+ate.slice(0,4),+ate.slice(5,7)]:(de?[+de.slice(0,4),+de.slice(5,7)]:ym);
+      const meses=[];while((ym[0]<fimYm[0]||(ym[0]===fimYm[0]&&ym[1]<=fimYm[1]))&&meses.length<12){meses.push(ym.slice());ym=ym[1]===12?[ym[0]+1,1]:[ym[0],ym[1]+1]}
+      if(!meses.length){$("status").textContent="A data Até não pode ser antes da data De.";return}
+      const logo=await logoDataUrl();
+      const {jsPDF}=window.jspdf;const doc=new jsPDF({orientation:"landscape",unit:"mm",format:"a4"});
+      const W=doc.internal.pageSize.getWidth(),H=doc.internal.pageSize.getHeight(),M=10;
+      const agora=new Date(),emissao=agora.toLocaleDateString("pt-BR")+" às "+agora.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"});
+      const feitas=new Set();let filtroTxt="",totalColab=0;
+      for(let mi=0;mi<meses.length;mi++){
+      const [y,m]=meses[mi];if(mi>0)doc.addPage();
       const ini=`${y}-${String(m).padStart(2,"0")}-01`,fim=isoDe(new Date(y,m,0)),nd=new Date(y,m,0).getDate(),hoje=today();
       const q=norm($("q").value);
       const dias=[...Array(nd)].map((_,i)=>`${y}-${String(m).padStart(2,"0")}-${String(i+1).padStart(2,"0")}`);
@@ -1279,14 +1286,10 @@ td .acoes{display:flex;gap:6px;flex-wrap:wrap}
         const dispDias=dias.filter((iso,i)=>cel[i]==="DISP").map(iso=>+iso.slice(8));
         resumo.push([r.nome,mat,r.filial,String(r.escala||"").toLowerCase(),String(cnt("OK")),String(cnt("PROG")),String(cnt("X")),String(cnt("OC")),String(cnt("F")),String(cnt("DISP")),dispDias.length?dispDias.join(", "):"—"]);
       });
-      const logo=await logoDataUrl();
-      const {jsPDF}=window.jspdf;const doc=new jsPDF({orientation:"landscape",unit:"mm",format:"a4"});
-      const W=doc.internal.pageSize.getWidth(),H=doc.internal.pageSize.getHeight(),M=10;
-      const agora=new Date(),emissao=agora.toLocaleDateString("pt-BR")+" às "+agora.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"});
-      const nomeMes=MESES[m-1].charAt(0)+MESES[m-1].slice(1).toLowerCase();
+      const nomeMes=MESES[m-1].charAt(0)+MESES[m-1].slice(1).toLowerCase();totalColab=Math.max(totalColab,linhas.length);
       const filSel=filiaisSel();
-      const filtroTxt=[`${nomeMes} de ${y}`].concat($("fTipo").value?["Tipo: "+$("fTipo").options[$("fTipo").selectedIndex].text]:[],[filSel.length?(filSel.length>1?"Filiais: ":"Filial: ")+filSel.join(", "):"Todas as filiais"]).concat(q?["Busca: "+$("q").value.trim()]:[]).join("   |   ");
-      const feitas=new Set();
+      filtroTxt=[`${nomeMes} de ${y}`].concat($("fTipo").value?["Tipo: "+$("fTipo").options[$("fTipo").selectedIndex].text]:[],[filSel.length?(filSel.length>1?"Filiais: ":"Filial: ")+filSel.join(", "):"Todas as filiais"]).concat(q?["Busca: "+$("q").value.trim()]:[]).join("   |   ");
+      
       const moldura=()=>{
         const pg=doc.internal.getCurrentPageInfo().pageNumber;if(feitas.has(pg))return;feitas.add(pg);
         if(logo)doc.addImage(logo,"PNG",M,6,34,10);
@@ -1353,9 +1356,11 @@ td .acoes{display:flex;gap:6px;flex-wrap:wrap}
           if(i===7&&+d.cell.raw>0){d.cell.styles.textColor=[148,97,0];d.cell.styles.fontStyle="bold"}
           if(d.row.index===corpo.length-1&&resumo.length){d.cell.styles.fillColor=[228,238,231];d.cell.styles.fontStyle="bold"}},
         didDrawPage:()=>moldura()});
+      }
       if(typeof doc.putTotalPages==="function")doc.putTotalPages("{total}");
-      doc.save(`Escala_Mensal_Reserva_${MESES[m-1]}_${y}.pdf`);
-      $("status").textContent=`Escala de ${nomeMes.toLowerCase()} gerada com ${linhas.length} colaboradores.`;
+      const nomeArq=meses.length===1?`${MESES[meses[0][1]-1]}_${meses[0][0]}`:`${MESES[meses[0][1]-1]}_${meses[0][0]}_a_${MESES[meses[meses.length-1][1]-1]}_${meses[meses.length-1][0]}`;
+      doc.save(`Escala_Mensal_Reserva_${nomeArq}.pdf`);
+      $("status").textContent=meses.length===1?`Escala do mês gerada com ${totalColab} colaboradores.`:`Escala gerada para ${meses.length} meses (um mês por página).`;
     }catch(e){console.error(e);$("status").textContent="Não foi possível gerar a escala. Recarregue a página e tente de novo."}
     finally{btn.disabled=false;btn.textContent=txt}
   });
