@@ -226,6 +226,7 @@ td .acoes{display:flex;gap:6px;flex-wrap:wrap}
         <button class="btn ghost" type="reset" id="r_clear">Limpar</button>
         <span id="r_msg" class="msg" hidden></span>
       </div>
+      <div class="msg warn" id="r_dupAviso" style="margin-top:12px" hidden></div>
     </form>
   </section>
 
@@ -524,6 +525,12 @@ td .acoes{display:flex;gap:6px;flex-wrap:wrap}
     if($("r_saida").value&&$("r_saida").value<$("r_entrada").value){mark($("r_saida"),true);return showMsg($("r_msg"),"err","A previsão de saída não pode ser antes da entrada.")}
     mark($("r_saida"),false);
     if(!db)return showMsg($("r_msg"),"err","Sem conexão com a planilha. Verifique a internet e tente de novo.");
+    /* não deixa cadastrar quem já está na reserva */
+    {const dup=duplicadoReserva($("r_mat").value,$("r_nome").value,edicao&&edicao.aba==="reserva"?edicao.id:null);
+     if(dup.mat){mark($("r_mat"),true);return showMsg($("r_msg"),"err",`A matrícula ${dup.mat.matricula} já está na reserva: ${dup.mat.nome}, desde ${fmt(dup.mat.entrada)}. Para mudar algo nesse cadastro, use Editar em Registros.`)}
+     if(dup.nome&&$("r_submit").dataset.confirmaNome!==norm($("r_nome").value)){mark($("r_nome"),true);$("r_submit").dataset.confirmaNome=norm($("r_nome").value);
+       return showMsg($("r_msg"),"warn",`Já existe ${dup.nome.nome} na reserva com a matrícula ${dup.nome.matricula}. Se for a mesma pessoa, não cadastre de novo. Se for outra pessoa com o mesmo nome, clique de novo em ${$("r_submit").textContent} para confirmar.`)}}
+    delete $("r_submit").dataset.confirmaNome;
     const doc={matricula:$("r_mat").value.trim(),nome:$("r_nome").value.trim().toUpperCase(),filial:$("r_filial").value,funcao:valorFuncao("r"),escala:$("r_escala").value,turno:$("r_turno").value,tipo:$("r_tipo").value==="POSTO"?"RESERVA DE POSTO - "+$("r_tipoPosto").value.trim().toUpperCase():$("r_tipo").value,previstaContrato:$("r_tipo").value==="POSTO"?contratoSel():"",motivo:$("r_motivo").value,motivoOutro:$("r_motivo").value==="Outro"?$("r_outro").value.trim():"",entrada:$("r_entrada").value,previsaoSaida:$("r_saida").value||"",criadoPor:uid||"",criadoEm:new Date().toISOString()};
     $("r_submit").disabled=true;
     if(edicao&&edicao.aba==="reserva"){
@@ -951,6 +958,21 @@ td .acoes{display:flex;gap:6px;flex-wrap:wrap}
     const l=reservas.filter(r=>r.matricula===x.matricula).sort((a,b)=>(b.entrada||"").localeCompare(a.entrada||""));
     return l.find(r=>(r.entrada||"")<=(x.data||"")&&(!r.saidaEfetiva||x.data<r.saidaEfetiva))||l[0]||{};
   }
+  /* cadastro ativo (sem saída) com a mesma matrícula ou o mesmo nome */
+  function duplicadoReserva(mat,nome,ignorarId){
+    const m=String(mat||"").trim().replace(/^0+(?=\d)/,""),n=norm(String(nome||"").trim()).replace(/\s+/g," ");
+    const ativos=reservas.filter(r=>!r.saidaEfetiva&&r._id!==ignorarId);
+    return {mat:m?ativos.find(r=>String(r.matricula).trim().replace(/^0+(?=\d)/,"")===m):null,
+            nome:n?ativos.find(r=>norm(String(r.nome).trim()).replace(/\s+/g," ")===n):null};
+  }
+  function avisoDuplicado(){
+    const dup=duplicadoReserva($("r_mat").value,$("r_nome").value,edicao&&edicao.aba==="reserva"?edicao.id:null);
+    const el=$("r_dupAviso");
+    if(dup.mat){el.textContent=`Atenção: a matrícula ${dup.mat.matricula} já está na reserva (${dup.mat.nome}, desde ${fmt(dup.mat.entrada)}).`;el.hidden=false}
+    else if(dup.nome){el.textContent=`Atenção: já existe ${dup.nome.nome} na reserva, com a matrícula ${dup.nome.matricula}.`;el.hidden=false}
+    else el.hidden=true;
+  }
+  ["r_mat","r_nome"].forEach(id=>$(id).addEventListener("blur",avisoDuplicado));
   const ehPostoR=x=>String(x.tipo||"").startsWith("RESERVA DE POSTO");
   function casaTipo(x,f){
     if(!f)return true;
@@ -970,7 +992,9 @@ td .acoes{display:flex;gap:6px;flex-wrap:wrap}
       const nT=f=>rows.filter(x=>casaTipo(x,f)).length;
       $("counts").innerHTML=`<span class="chip">${rows.length} ${rows.length===1?"colaborador":"colaboradores"}${$("fStatus").value==="ativo"?" na reserva":""}</span><span class="chip gray">${nT("Transitória")} transitória</span><span class="chip gray">${nT("Permanente")} permanente</span><span class="chip gray">${nT("POSTO_SIM")} reserva de posto prevista em contrato</span><span class="chip gray">${nT("POSTO_NAO")} reserva de posto não prevista</span>${$("fStatus").value!=="ativo"&&rows.length-atv.length?`<span class="chip gray">${rows.length-atv.length} já saíram</span>`:""}${venc?`<span class="chip red">${venc} com previsão de saída vencida</span>`:""}`;
       thead.innerHTML="<tr><th>Matrícula</th><th>Nome</th><th>Filial</th><th>Função</th><th>Escala</th><th>Tipo</th><th>Prevista em contrato</th><th>Motivo da entrada</th><th>Entrada</th><th>Prev. saída</th><th>Saída efetiva</th><th></th></tr>";
-      tbody.innerHTML=rows.length?rows.map(x=>`<tr><td class="mono">${esc(x.matricula)}</td><td>${esc(x.nome)}</td><td class="mono" title="${esc(FILIAIS[x.filial]||"")}">${esc(x.filial)}</td><td>${esc(x.funcao)}</td><td class="mono">${esc(x.escala)}${x.turno?`<br><span class="hint">${esc(x.turno)}</span>`:""}</td><td>${esc(x.tipo)}</td><td>${ehPostoR(x)?(x.previstaContrato==="SIM"?'<span class="chip">Sim</span>':x.previstaContrato?'<span class="chip gray">Não</span>':"—"):"—"}</td><td>${esc(x.motivo)}${x.motivoOutro?`: ${esc(x.motivoOutro)}`:""}</td><td class="mono">${fmt(x.entrada)}</td><td class="mono">${x.previsaoSaida?`<span class="${!x.saidaEfetiva&&x.previsaoSaida<hoje?"chip red":""}">${fmt(x.previsaoSaida)}</span>`:"—"}</td><td>${x.saidaEfetiva?`<span class="mono">${fmt(x.saidaEfetiva)}</span><br><span class="hint">${esc(x.motivoSaida)}${detalheSaida(x)?" · "+esc(detalheSaida(x)):""}</span>`:"—"}</td><td><div class="acoes"><button class="btn edit small" data-edit="reservas/${esc(x._id)}">Editar</button>${podeExcluir(x)?`<button class="btn danger small" data-del="reservas/${esc(x._id)}">Excluir</button>`:""}</div>${quandoEditado(x)}</td></tr>`).join("")
+      const atv2=reservas.filter(r=>!r.saidaEfetiva),kM=r=>String(r.matricula).trim().replace(/^0+(?=\d)/,""),kN=r=>norm(String(r.nome).trim()).replace(/\s+/g," ");
+      const ehDup=x=>!x.saidaEfetiva&&atv2.some(r=>r._id!==x._id&&(kM(r)===kM(x)||kN(r)===kN(x)));
+      tbody.innerHTML=rows.length?rows.map(x=>`<tr><td class="mono">${esc(x.matricula)}</td><td>${esc(x.nome)}${ehDup(x)?'<br><span class="chip red" title="Há outro cadastro ativo com a mesma matrícula ou o mesmo nome">Duplicado</span>':""}</td><td class="mono" title="${esc(FILIAIS[x.filial]||"")}">${esc(x.filial)}</td><td>${esc(x.funcao)}</td><td class="mono">${esc(x.escala)}${x.turno?`<br><span class="hint">${esc(x.turno)}</span>`:""}</td><td>${esc(x.tipo)}</td><td>${ehPostoR(x)?(x.previstaContrato==="SIM"?'<span class="chip">Sim</span>':x.previstaContrato?'<span class="chip gray">Não</span>':"—"):"—"}</td><td>${esc(x.motivo)}${x.motivoOutro?`: ${esc(x.motivoOutro)}`:""}</td><td class="mono">${fmt(x.entrada)}</td><td class="mono">${x.previsaoSaida?`<span class="${!x.saidaEfetiva&&x.previsaoSaida<hoje?"chip red":""}">${fmt(x.previsaoSaida)}</span>`:"—"}</td><td>${x.saidaEfetiva?`<span class="mono">${fmt(x.saidaEfetiva)}</span><br><span class="hint">${esc(x.motivoSaida)}${detalheSaida(x)?" · "+esc(detalheSaida(x)):""}</span>`:"—"}</td><td><div class="acoes"><button class="btn edit small" data-edit="reservas/${esc(x._id)}">Editar</button>${podeExcluir(x)?`<button class="btn danger small" data-del="reservas/${esc(x._id)}">Excluir</button>`:""}</div>${quandoEditado(x)}</td></tr>`).join("")
         :`<tr><td colspan="12" class="empty">${db?"Nenhum colaborador com esses filtros. Os registros feitos na aba Entrada na reserva aparecem aqui.":"Carregando registros…"}</td></tr>`;
     }else{
       const rows=filtrar(movs,"data").sort((a,b)=>(b.data||"").localeCompare(a.data||"")||(b.criadoEm||"").localeCompare(a.criadoEm||""));

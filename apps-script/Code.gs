@@ -52,6 +52,10 @@ function doPost(e) {
     const agora = new Date().toISOString();
     if (body.action === "addReserva") {
       exigir_(body.data, ["matricula", "nome", "filial", "funcao", "escala", "tipo", "motivo", "entrada"]);
+      // não aceita a mesma matrícula duas vezes na reserva (cadastro sem saída)
+      const semZero = v => String(v || "").trim().replace(/^0+(?=\d)/, "");
+      const ativo = ler_(ABA_RES, RES_COLS).find(r => !r.saidaEfetiva && semZero(r.matricula) === semZero(body.data.matricula));
+      if (ativo) throw new Error("A matrícula " + ativo.matricula + " já está na reserva (" + ativo.nome + "). Use Editar em Registros.");
       inserir_(ABA_RES, RES_COLS, Object.assign({}, body.data, { criadoEm: agora }));
     } else if (body.action === "addMov") {
       exigir_(body.data, ["situacao", "matricula", "nome", "data"]);
