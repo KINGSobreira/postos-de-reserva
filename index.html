@@ -584,7 +584,7 @@ td .acoes{display:flex;gap:6px;flex-wrap:wrap}
   /* escala com que o colaborador foi cadastrado na reserva */
   const escalaCadastro=()=>{const m=$("m_mat").value.trim(),r=m&&(ultimaReserva(m,true)||ultimaReserva(m,false));return r?r.escala:""};
   const ignorados=()=>new Set(edicao&&edicao.aba==="mov"?edicao.ids:[]);
-  const jaLancado=(mat,iso)=>{const ig=ignorados();return movs.some(x=>x.matricula===mat&&x.data===iso&&!ig.has(x._id))};
+  const jaLancado=(mat,iso)=>{const ig=ignorados();return movs.some(x=>chaveMat(x.matricula)===chaveMat(mat)&&x.data===iso&&!ig.has(x._id))};
   /* cobertura em escala 12x36: depois de um plantão 12x36 vem um dia de folga.
      Devolve o plantão vizinho que impede o lançamento, ou "" se estiver livre.
      Conta os dias corridos, inclusive na troca de mês. */
@@ -593,7 +593,7 @@ td .acoes{display:flex;gap:6px;flex-wrap:wrap}
     const d=new Date(iso+"T12:00:00");
     for(const k of [-1,1]){
       const v=new Date(d);v.setDate(v.getDate()+k);const vi=isoDe(v);
-      if(movs.some(x=>x.matricula===mat&&x.data===vi&&COB(x.situacao)&&(x.escalaCoberto||x.escala)==="12X36"&&!ignorados().has(x._id)))return vi;
+      if(movs.some(x=>chaveMat(x.matricula)===chaveMat(mat)&&x.data===vi&&COB(x.situacao)&&(x.escalaCoberto||x.escala)==="12X36"&&!ignorados().has(x._id)))return vi;
     }
     return "";
   }
@@ -636,7 +636,18 @@ td .acoes{display:flex;gap:6px;flex-wrap:wrap}
   }
   document.querySelectorAll('input[name="situacao"]').forEach(r=>r.addEventListener("change",trocarSituacao));
   const ativas=()=>reservas.filter(r=>!r.saidaEfetiva);
-  const ultimaReserva=(m,soAtiva)=>(soAtiva?ativas():reservas).filter(x=>x.matricula===m).sort((a,b)=>(b.entrada||"").localeCompare(a.entrada||""))[0];
+  /* MATRÍCULA: 0649874 e 649874 são a mesma pessoa. Compara sem os zeros à esquerda
+     e usa sempre a forma do cadastro na reserva (a mais completa). */
+  const chaveMat=m=>String(m==null?"":m).trim().replace(/\s+/g,"").replace(/^0+(?=\d)/,"");
+  let MAT_CANON=new Map();
+  function unificarMatriculas(){
+    MAT_CANON=new Map();
+    reservas.slice().sort((a,b)=>String(b.matricula).trim().length-String(a.matricula).trim().length).forEach(r=>{const k=chaveMat(r.matricula);if(k&&!MAT_CANON.has(k))MAT_CANON.set(k,String(r.matricula).trim())});
+    const fix=x=>{const c=MAT_CANON.get(chaveMat(x.matricula));if(c&&c!==x.matricula){x._matOrig=x.matricula;x.matricula=c}};
+    reservas.forEach(fix);movs.forEach(fix);
+  }
+  const matCanon=m=>MAT_CANON.get(chaveMat(m))||String(m||"").trim();
+  const ultimaReserva=(m,soAtiva)=>(soAtiva?ativas():reservas).filter(x=>chaveMat(x.matricula)===chaveMat(m)).sort((a,b)=>(b.entrada||"").localeCompare(a.entrada||""))[0];
   function preencherPorMatricula(){
     const m=$("m_mat").value.trim();
     const r=ultimaReserva(m,true)||ultimaReserva(m,false);
@@ -694,7 +705,7 @@ td .acoes{display:flex;gap:6px;flex-wrap:wrap}
     if(COB(s)&&(!$("c_hIni").value)!==(!$("c_hFim").value)){mark($("c_hIni"),!$("c_hIni").value);mark($("c_hFim"),!$("c_hFim").value);bad=true}
     if(bad)return showMsg($("m_msg"),"err","Preencha os campos obrigatórios destacados.");
     if(!db)return showMsg($("m_msg"),"err","Sem conexão com a planilha. Verifique a internet e tente de novo.");
-    const mat=$("m_mat").value.trim();
+    const mat=matCanon($("m_mat").value);$("m_mat").value=mat;
     let dias=diasDoLancamento();
     if(dias===null){mark($("m_ate"),true);return showMsg($("m_msg"),"err","A data final não pode ser antes da data inicial.")}
     mark($("m_ate"),false);
@@ -1002,7 +1013,9 @@ td .acoes{display:flex;gap:6px;flex-wrap:wrap}
       const cls={cobertura:"",programado:"",ocorrencia:"warn"};
       $("counts").innerHTML=Object.keys(SIT).filter(k=>n(k)||k==="cobertura").map(k=>`<span class="chip ${cls[k]??"gray"}">${n(k)} ${SIT[k].toLowerCase()}</span>`).join("");
       thead.innerHTML="<tr><th>Data</th><th>Situação</th><th>Matrícula</th><th>Nome (reserva)</th><th>Filial</th><th>Função / Escala</th><th>Posto de cobertura</th><th>Colaborador coberto</th><th>Motivo</th><th></th></tr>";
-      tbody.innerHTML=rows.length?rows.map(x=>`<tr><td class="mono">${fmt(x.data)}</td><td><span class="chip ${COB(x.situacao)?"":x.situacao==="ocorrencia"?"warn":"gray"}">${SIT[x.situacao]||esc(x.situacao)}</span></td><td class="mono">${esc(x.matricula)}</td><td>${esc(x.nome)}</td><td class="mono">${esc(x.filial||"—")}</td><td>${x.funcao?`${esc(x.funcao)} · ${esc(x.escala)}`:"—"}</td><td>${esc(x.local||"—")}${x.turno||x.horario||x.intrajornada?`<br><span class="hint">${esc([x.turno,x.horario,x.intrajornada?"Intrajornada: "+x.intrajornada:""].filter(Boolean).join(" · "))}</span>`:""}</td><td>${x.matCoberto?`<span class="mono">${esc(x.matCoberto)}</span> ${esc(x.nomeCoberto)}${x.escalaCoberto?`<br><span class="hint">Escala ${esc(x.escalaCoberto)}</span>`:""}`:"—"}</td><td>${esc(x.motivo||"—")}</td><td><div class="acoes"><button class="btn edit small" data-edit="movimentacoes/${esc(x._id)}">Editar</button>${podeExcluir(x)?`<button class="btn danger small" data-del="movimentacoes/${esc(x._id)}">Excluir</button>`:""}</div>${quandoEditado(x)}</td></tr>`).join("")
+      const porDia=new Map();movs.forEach(m=>{const k=chaveMat(m.matricula)+"|"+m.data;porDia.set(k,(porDia.get(k)||0)+1)});
+      const repetido=x=>(porDia.get(chaveMat(x.matricula)+"|"+x.data)||0)>1;
+      tbody.innerHTML=rows.length?rows.map(x=>`<tr${repetido(x)?' style="background:var(--danger-soft)"':""}><td class="mono">${fmt(x.data)}${repetido(x)?'<br><span class="chip red" title="Há mais de um lançamento dessa pessoa nesse dia. Exclua o que estiver errado.">Dia repetido</span>':""}</td><td><span class="chip ${COB(x.situacao)?"":x.situacao==="ocorrencia"?"warn":"gray"}">${SIT[x.situacao]||esc(x.situacao)}</span></td><td class="mono">${esc(x.matricula)}</td><td>${esc(x.nome)}</td><td class="mono">${esc(x.filial||"—")}</td><td>${x.funcao?`${esc(x.funcao)} · ${esc(x.escala)}`:"—"}</td><td>${esc(x.local||"—")}${x.turno||x.horario||x.intrajornada?`<br><span class="hint">${esc([x.turno,x.horario,x.intrajornada?"Intrajornada: "+x.intrajornada:""].filter(Boolean).join(" · "))}</span>`:""}</td><td>${x.matCoberto?`<span class="mono">${esc(x.matCoberto)}</span> ${esc(x.nomeCoberto)}${x.escalaCoberto?`<br><span class="hint">Escala ${esc(x.escalaCoberto)}</span>`:""}`:"—"}</td><td>${esc(x.motivo||"—")}</td><td><div class="acoes"><button class="btn edit small" data-edit="movimentacoes/${esc(x._id)}">Editar</button>${podeExcluir(x)?`<button class="btn danger small" data-del="movimentacoes/${esc(x._id)}">Excluir</button>`:""}</div>${quandoEditado(x)}</td></tr>`).join("")
         :`<tr><td colspan="10" class="empty">${db?"Nenhuma situação registrada com esses filtros. Os lançamentos da aba Situação do dia aparecem aqui.":"Carregando registros…"}</td></tr>`;
     }
   }
@@ -1608,6 +1621,7 @@ td .acoes{display:flex;gap:6px;flex-wrap:wrap}
       if(!j.ok)throw new Error(j.error);
       reservas=(j.reservas||[]).map(x=>Object.assign({_id:x.id},x));
       movs=(j.movs||[]).map(x=>Object.assign({_id:x.id},x));
+      unificarMatriculas();
       const mats=[...new Map(ativas().map(r=>[r.matricula,r])).values()];
       $("listaReserva").innerHTML=mats.map(r=>`<option value="${esc(r.matricula)}">${esc(r.nome)}</option>`).join("");
       render();if(!$("view-dash").hidden)renderDash();

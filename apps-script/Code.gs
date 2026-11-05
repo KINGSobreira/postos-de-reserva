@@ -64,6 +64,11 @@ function doPost(e) {
       const lista = Array.isArray(body.data) ? body.data : [];
       if (!lista.length || lista.length > 62) throw new Error("Quantidade de dias inválida.");
       lista.forEach(d => exigir_(d, ["situacao", "matricula", "nome", "data"]));
+      // não grava dois lançamentos da mesma pessoa no mesmo dia (0649874 = 649874)
+      const chave = m => String(m || "").trim().replace(/^0+(?=\d)/, "");
+      const existentes = new Set(ler_(ABA_MOV, MOV_COLS).map(x => chave(x.matricula) + "|" + x.data));
+      const repetido = lista.find(d => existentes.has(chave(d.matricula) + "|" + d.data));
+      if (repetido) throw new Error("Já existe lançamento de " + repetido.nome + " em " + repetido.data.split("-").reverse().join("/") + ".");
       lista.forEach(d => inserir_(ABA_MOV, MOV_COLS, Object.assign({}, d, { criadoEm: agora })));
     } else if (body.action === "saida") {
       exigir_(body.data, ["saidaEfetiva", "motivoSaida"]);
