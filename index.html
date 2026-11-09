@@ -279,9 +279,10 @@ td .acoes{display:flex;gap:6px;flex-wrap:wrap}
               <label><input type="radio" name="c_intra" id="c_intraSim" value="SIM"> Sim</label>
               <label><input type="radio" name="c_intra" id="c_intraNao" value="NÃO"> Não</label>
             </div></div>
-          <label class="f"><span>Matrícula (colaborador coberto) <em>*</em></span><input id="c_mat2" inputmode="numeric" autocomplete="off"></label>
-          <label class="f"><span>Nome (colaborador coberto) <em>*</em></span><input id="c_nome2" autocomplete="off"></label>
-          <label class="f"><span>Escala do colaborador coberto <em>*</em></span>
+          <label class="f full" style="flex-direction:row;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="c_semTit" style="width:auto;accent-color:var(--accent)"> <span style="text-transform:none;letter-spacing:0;font-size:14px;color:var(--fg);font-weight:600">Sem titular (posto sem faltante: posto descoberto, reforço, implantação…)</span></label>
+          <label class="f"><span>Matrícula (colaborador coberto) <em class="titReq">*</em></span><input id="c_mat2" inputmode="numeric" autocomplete="off"></label>
+          <label class="f"><span>Nome (colaborador coberto) <em class="titReq">*</em></span><input id="c_nome2" autocomplete="off"></label>
+          <label class="f"><span>Escala do colaborador coberto <em class="titReq">*</em></span>
             <select id="c_escalaCob"><option value="">Selecione</option><option>12X36</option><option>5X2</option><option>6X1</option><option>5X1</option></select>
             <span class="hint">Define os dias lançados no período. Se ficar em branco, vale a escala do colaborador da reserva.</span></label>
           <div class="f"><span class="hint" style="font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase">Horário de trabalho</span>
@@ -596,7 +597,15 @@ td .acoes{display:flex;gap:6px;flex-wrap:wrap}
   }
   /* 12x36 = dia sim, dia não contando os dias corridos (vira de par para ímpar na troca de mês) */
   const diasEntre=(a,b)=>Math.round((Date.UTC(+b.slice(0,4),+b.slice(5,7)-1,+b.slice(8,10))-Date.UTC(+a.slice(0,4),+a.slice(5,7)-1,+a.slice(8,10)))/864e5);
-  const escalaDias=()=>$("c_escalaCob").value||$("c_escala").value;
+  const semTitular=()=>$("c_semTit").checked;
+  const escalaDias=()=>(!semTitular()&&$("c_escalaCob").value)||$("c_escala").value;
+  function ajustarSemTitular(){
+    const st=semTitular();
+    ["c_mat2","c_nome2","c_escalaCob"].forEach(id=>{$(id).disabled=st;if(st){$(id).value="";$(id).removeAttribute("aria-invalid")}});
+    document.querySelectorAll(".titReq").forEach(e=>e.hidden=st);
+    excluidos.clear();atualizarDias();
+  }
+  $("c_semTit").addEventListener("change",ajustarSemTitular);
   const PER=s=>COB(s)||s==="ocorrencia"||s==="disponivel_posto";
   const postoDaReserva=r=>{const m=/^RESERVA DE POSTO - (.+)$/.exec(String((r&&r.tipo)||""));return m?m[1].trim():""};
   $("d_posto").addEventListener("input",()=>{$("d_posto").dataset.editado="1"});
@@ -716,6 +725,7 @@ td .acoes{display:flex;gap:6px;flex-wrap:wrap}
   sugestoes("m_mat","m_matSug");sugestoes("m_nome","m_nomeSug");
   function limparMov(){
     ["m_mat","m_nome","m_ate","c_filial","c_funcao","c_funcaoOutra","c_escala","c_turno","c_local","c_mat2","c_nome2","c_escalaCob","c_hIni","c_hFim","c_motivo","c_motivoOutro","n_motivo","o_motivo","o_apvPosto","o_apvObs","d_posto"].forEach(id=>{$(id).value="";$(id).removeAttribute("aria-invalid")});
+    $("c_semTit").checked=false;ajustarSemTitular();
     document.querySelectorAll('input[name="c_intra"]').forEach(r=>r.checked=false);$("c_intraGrp").style.outline="";
     $("m_data").value=today();$("m_found").textContent="";$("c_funcaoOutraWrap").hidden=true;$("o_apvPostoWrap").hidden=true;$("o_apvObsWrap").hidden=true;$("c_motivoOutroWrap").hidden=true;excluidos.clear();atualizarDias();
   }
@@ -723,7 +733,7 @@ td .acoes{display:flex;gap:6px;flex-wrap:wrap}
   $("formMov").addEventListener("submit",async e=>{
     e.preventDefault();
     const s=sitAtual();
-    const req=COB(s)?["c_filial","c_funcao","c_escala","c_turno","c_local","c_mat2","c_nome2","c_escalaCob","c_motivo"]:({nao_utilizado:["n_motivo"],ocorrencia:["o_motivo"].concat(APOIOS.includes($("o_motivo").value)?["o_apvPosto","o_apvObs"]:[]),disponivel_posto:["d_posto"]}[s]||[]);
+    const req=COB(s)?["c_filial","c_funcao","c_escala","c_turno","c_local"].concat(semTitular()?[]:["c_mat2","c_nome2","c_escalaCob"]).concat(["c_motivo"]):({nao_utilizado:["n_motivo"],ocorrencia:["o_motivo"].concat(APOIOS.includes($("o_motivo").value)?["o_apvPosto","o_apvObs"]:[]),disponivel_posto:["d_posto"]}[s]||[]);
     let bad=false;["m_mat","m_nome","m_data",...req].forEach(id=>{if(mark($(id),!$(id).value.trim()))bad=true});
     if(COB(s)&&$("c_funcao").value==="OUTRA"&&mark($("c_funcaoOutra"),!$("c_funcaoOutra").value.trim()))bad=true;
     if(COB(s)&&$("c_motivo").value==="OUTRO"&&mark($("c_motivoOutro"),!$("c_motivoOutro").value.trim()))bad=true;
@@ -749,7 +759,7 @@ td .acoes{display:flex;gap:6px;flex-wrap:wrap}
     const r=ultimaReserva(mat,true)||ultimaReserva(mat,false),hoje=today(),agora=new Date().toISOString();
     const regs=dias.map(iso=>{
       const b={situacao:(s==="cobertura"&&iso>hoje)?"programado":s,matricula:mat,nome:$("m_nome").value.trim().toUpperCase(),data:iso,criadoPor:uid||"",criadoEm:agora};
-      if(COB(s))Object.assign(b,{filial:$("c_filial").value,funcao:valorFuncao("c"),escala:$("c_escala").value,turno:$("c_turno").value,local:$("c_local").value.trim().toUpperCase(),matCoberto:$("c_mat2").value.trim(),nomeCoberto:$("c_nome2").value.trim().toUpperCase(),escalaCoberto:$("c_escalaCob").value,intrajornada:intra,horario:fmtHora($("c_hIni").value,$("c_hFim").value),motivo:$("c_motivo").value==="OUTRO"?$("c_motivoOutro").value.trim().toUpperCase():$("c_motivo").value});
+      if(COB(s))Object.assign(b,{filial:$("c_filial").value,funcao:valorFuncao("c"),escala:$("c_escala").value,turno:$("c_turno").value,local:$("c_local").value.trim().toUpperCase(),matCoberto:semTitular()?"":$("c_mat2").value.trim(),nomeCoberto:semTitular()?"SEM TITULAR":$("c_nome2").value.trim().toUpperCase(),escalaCoberto:semTitular()?"":$("c_escalaCob").value,intrajornada:intra,horario:fmtHora($("c_hIni").value,$("c_hFim").value),motivo:$("c_motivo").value==="OUTRO"?$("c_motivoOutro").value.trim().toUpperCase():$("c_motivo").value});
       else{b.filial=r?r.filial:"";b.funcao=r?r.funcao:"";b.escala=r?r.escala:"";b.motivo=s==="ocorrencia"?$("o_motivo").value:s==="nao_utilizado"?$("n_motivo").value.trim():"";
         if(s==="ocorrencia"&&APOIOS.includes(b.motivo)){b.local=$("o_apvPosto").value.trim().toUpperCase();b.observacao=$("o_apvObs").value.trim()}if(s==="disponivel_posto")b.local=$("d_posto").value.trim().toUpperCase()}
       return b;
@@ -935,7 +945,7 @@ td .acoes{display:flex;gap:6px;flex-wrap:wrap}
     $("m_mat").value=x.matricula;preencherPorMatricula();$("m_nome").value=x.nome;
     if(COB(sit)){
       $("c_filial").value=x.filial||"";setFuncao("c",x.funcao);$("c_escala").value=x.escala||"";$("c_turno").value=x.turno||"";
-      $("c_local").value=x.local||"";$("c_mat2").value=x.matCoberto||"";$("c_nome2").value=x.nomeCoberto||"";$("c_escalaCob").value=x.escalaCoberto||"";
+      $("c_local").value=x.local||"";$("c_semTit").checked=x.nomeCoberto==="SEM TITULAR";ajustarSemTitular();if(!semTitular()){$("c_mat2").value=x.matCoberto||"";$("c_nome2").value=x.nomeCoberto||"";$("c_escalaCob").value=x.escalaCoberto||""}
       document.querySelectorAll('input[name="c_intra"]').forEach(c=>c.checked=c.value===x.intrajornada);
       const h=/^(\d{2})h(\d{2}) às (\d{2})h(\d{2})$/.exec(x.horario||"");$("c_hIni").value=h?`${h[1]}:${h[2]}`:"";$("c_hFim").value=h?`${h[3]}:${h[4]}`:"";
       const naLista=[...$("c_motivo").options].some(o=>o.value===x.motivo);
