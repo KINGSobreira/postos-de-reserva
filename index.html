@@ -309,9 +309,9 @@ td .acoes{display:flex;gap:6px;flex-wrap:wrap}
         <h3>Ocorrência</h3>
         <div class="grid">
           <label class="f full"><span>Motivo <em>*</em></span>
-            <select id="o_motivo"><option value="">Selecione</option><option>AFASTAMENTO</option><option>ATESTADO MÉDICO</option><option>CASAMENTO</option><option>FALTA NÃO JUSTIFICADA</option><option>FÉRIAS</option><option>INTEGRAÇÃO</option><option>SUSPENSÃO</option><option>FERIADO</option><option>LICENÇA PATERNIDADE</option><option>LICENÇA ÓBITO</option><option>ACOMPANHAMENTO DE FILHO MENOR DE 6 ANOS</option><option>FOLGA ESCALA 6X1</option><option>FOLGA ESCALA 5X1</option><option>FOLGA TRE</option><option>RECICLAGEM</option><option>ABANDONO DE EMPREGO</option><option>DEVOLUÇÃO</option><option>DESLIGAMENTO</option><option>COBERTURA DE FOLGA</option><option>IMPLANTAÇÃO</option><option>CONVOCAÇÃO SINDICAL</option><option>APOIO A PORTARIA VIRTUAL</option></select></label>
+            <select id="o_motivo"><option value="">Selecione</option><option>AFASTAMENTO</option><option>ATESTADO MÉDICO</option><option>CASAMENTO</option><option>FALTA NÃO JUSTIFICADA</option><option>FÉRIAS</option><option>INTEGRAÇÃO</option><option>SUSPENSÃO</option><option>FERIADO</option><option>LICENÇA PATERNIDADE</option><option>LICENÇA ÓBITO</option><option>ACOMPANHAMENTO DE FILHO MENOR DE 6 ANOS</option><option>FOLGA ESCALA 6X1</option><option>FOLGA ESCALA 5X1</option><option>FOLGA TRE</option><option>RECICLAGEM</option><option>ABANDONO DE EMPREGO</option><option>DEVOLUÇÃO</option><option>DESLIGAMENTO</option><option>COBERTURA DE FOLGA</option><option>IMPLANTAÇÃO</option><option>CONVOCAÇÃO SINDICAL</option><option>APOIO A PORTARIA VIRTUAL</option><option>APOIO AO OP. PÚBLICO</option></select></label>
           <label class="f full" id="o_apvPostoWrap" hidden><span>Posto de serviço para onde foi levado <em>*</em></span><input id="o_apvPosto" autocomplete="off"></label>
-          <label class="f full" id="o_apvObsWrap" hidden><span>Motivo do apoio <em>*</em></span><textarea id="o_apvObs" placeholder="Ex.: falha no sistema da portaria virtual, apoio no controle de acesso"></textarea></label>
+          <label class="f full" id="o_apvObsWrap" hidden><span>Motivo do apoio <em>*</em></span><textarea id="o_apvObs" placeholder="Ex.: falha no sistema da portaria virtual, reforço solicitado pelo cliente"></textarea></label>
         </div>
       </div>
 
@@ -651,7 +651,9 @@ td .acoes{display:flex;gap:6px;flex-wrap:wrap}
     else if($("c_turno").value==="NOTURNO"){$("c_hIni").value="19:00";$("c_hFim").value="07:00"}
   }
   ["c_turno","c_escalaCob"].forEach(id=>$(id).addEventListener("change",sugerirHorario));
-  $("o_motivo").addEventListener("change",()=>{const a=$("o_motivo").value==="APOIO A PORTARIA VIRTUAL";$("o_apvPostoWrap").hidden=!a;$("o_apvObsWrap").hidden=!a});
+  /* motivos de ocorrência que pedem o posto para onde o colaborador foi levado e o motivo do apoio */
+  const APOIOS=["APOIO A PORTARIA VIRTUAL","APOIO AO OP. PÚBLICO"];
+  $("o_motivo").addEventListener("change",()=>{const a=APOIOS.includes($("o_motivo").value);$("o_apvPostoWrap").hidden=!a;$("o_apvObsWrap").hidden=!a});
   function trocarSituacao(){
     const s=sitAtual();
     $("blk-cobertura").hidden=!COB(s);$("blk-nao_utilizado").hidden=s!=="nao_utilizado";$("blk-ocorrencia").hidden=s!=="ocorrencia";$("blk-disponivel_posto").hidden=s!=="disponivel_posto";
@@ -721,7 +723,7 @@ td .acoes{display:flex;gap:6px;flex-wrap:wrap}
   $("formMov").addEventListener("submit",async e=>{
     e.preventDefault();
     const s=sitAtual();
-    const req=COB(s)?["c_filial","c_funcao","c_escala","c_turno","c_local","c_mat2","c_nome2","c_escalaCob","c_motivo"]:({nao_utilizado:["n_motivo"],ocorrencia:["o_motivo"].concat($("o_motivo").value==="APOIO A PORTARIA VIRTUAL"?["o_apvPosto","o_apvObs"]:[]),disponivel_posto:["d_posto"]}[s]||[]);
+    const req=COB(s)?["c_filial","c_funcao","c_escala","c_turno","c_local","c_mat2","c_nome2","c_escalaCob","c_motivo"]:({nao_utilizado:["n_motivo"],ocorrencia:["o_motivo"].concat(APOIOS.includes($("o_motivo").value)?["o_apvPosto","o_apvObs"]:[]),disponivel_posto:["d_posto"]}[s]||[]);
     let bad=false;["m_mat","m_nome","m_data",...req].forEach(id=>{if(mark($(id),!$(id).value.trim()))bad=true});
     if(COB(s)&&$("c_funcao").value==="OUTRA"&&mark($("c_funcaoOutra"),!$("c_funcaoOutra").value.trim()))bad=true;
     if(COB(s)&&$("c_motivo").value==="OUTRO"&&mark($("c_motivoOutro"),!$("c_motivoOutro").value.trim()))bad=true;
@@ -749,7 +751,7 @@ td .acoes{display:flex;gap:6px;flex-wrap:wrap}
       const b={situacao:(s==="cobertura"&&iso>hoje)?"programado":s,matricula:mat,nome:$("m_nome").value.trim().toUpperCase(),data:iso,criadoPor:uid||"",criadoEm:agora};
       if(COB(s))Object.assign(b,{filial:$("c_filial").value,funcao:valorFuncao("c"),escala:$("c_escala").value,turno:$("c_turno").value,local:$("c_local").value.trim().toUpperCase(),matCoberto:$("c_mat2").value.trim(),nomeCoberto:$("c_nome2").value.trim().toUpperCase(),escalaCoberto:$("c_escalaCob").value,intrajornada:intra,horario:fmtHora($("c_hIni").value,$("c_hFim").value),motivo:$("c_motivo").value==="OUTRO"?$("c_motivoOutro").value.trim().toUpperCase():$("c_motivo").value});
       else{b.filial=r?r.filial:"";b.funcao=r?r.funcao:"";b.escala=r?r.escala:"";b.motivo=s==="ocorrencia"?$("o_motivo").value:s==="nao_utilizado"?$("n_motivo").value.trim():"";
-        if(s==="ocorrencia"&&b.motivo==="APOIO A PORTARIA VIRTUAL"){b.local=$("o_apvPosto").value.trim().toUpperCase();b.observacao=$("o_apvObs").value.trim()}if(s==="disponivel_posto")b.local=$("d_posto").value.trim().toUpperCase()}
+        if(s==="ocorrencia"&&APOIOS.includes(b.motivo)){b.local=$("o_apvPosto").value.trim().toUpperCase();b.observacao=$("o_apvObs").value.trim()}if(s==="disponivel_posto")b.local=$("d_posto").value.trim().toUpperCase()}
       return b;
     });
     $("m_submit").disabled=true;
@@ -1224,7 +1226,7 @@ td .acoes{display:flex;gap:6px;flex-wrap:wrap}
   /* RUBRICAS DAS OCORRÊNCIAS (sigla do motivo) */
   const RUBRICAS={"AFASTAMENTO":"AFA","ATESTADO MEDICO":"ATE","CASAMENTO":"CAS","LICENCA CASAMENTO":"CAS","FALTA NAO JUSTIFICADA":"FNJ","FERIAS":"FER","INTEGRACAO":"INT","SUSPENSAO":"SUS","FERIADO":"FRD",
     "LICENCA PATERNIDADE":"PAT","LICENCA OBITO":"OBT","ACOMPANHAMENTO DE FILHO MENOR DE 6 ANOS":"ACF","FOLGA ESCALA 6X1":"F61","FOLGA ESCALA 5X1":"F51","FOLGA TRE":"TRE","RECICLAGEM":"REC",
-    "ABANDONO DE EMPREGO":"ABE","ABONDONO DE EMPREGO":"ABE","DEVOLUCAO":"DEV","DESLIGAMENTO":"DES","COBERTURA DE FOLGA":"CBF","IMPLANTACAO":"IMP","CONVOCACAO SINDICAL":"SIN","APOIO A PORTARIA VIRTUAL":"APV"};
+    "ABANDONO DE EMPREGO":"ABE","ABONDONO DE EMPREGO":"ABE","DEVOLUCAO":"DEV","DESLIGAMENTO":"DES","COBERTURA DE FOLGA":"CBF","IMPLANTACAO":"IMP","CONVOCACAO SINDICAL":"SIN","APOIO A PORTARIA VIRTUAL":"APV","APOIO AO OP. PUBLICO":"AOP"};
   const rubrica=m=>RUBRICAS[norm(String(m||"").trim()).toUpperCase()]||"OC";
   const RUB_SET=new Set(Object.values(RUBRICAS).concat("OC"));
   /* agrupa linhas de tabela por filial, com uma faixa de título para cada filial */
