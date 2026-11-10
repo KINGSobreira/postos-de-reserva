@@ -310,9 +310,9 @@ td .acoes{display:flex;gap:6px;flex-wrap:wrap}
         <h3>Ocorrência</h3>
         <div class="grid">
           <label class="f full"><span>Motivo <em>*</em></span>
-            <select id="o_motivo"><option value="">Selecione</option><option>AFASTAMENTO</option><option>ATESTADO MÉDICO</option><option>CASAMENTO</option><option>FALTA NÃO JUSTIFICADA</option><option>FÉRIAS</option><option>INTEGRAÇÃO</option><option>SUSPENSÃO</option><option>FERIADO</option><option>LICENÇA PATERNIDADE</option><option>LICENÇA ÓBITO</option><option>ACOMPANHAMENTO DE FILHO MENOR DE 6 ANOS</option><option>FOLGA ESCALA 6X1</option><option>FOLGA ESCALA 5X1</option><option>FOLGA TRE</option><option>RECICLAGEM</option><option>ABANDONO DE EMPREGO</option><option>DEVOLUÇÃO</option><option>DESLIGAMENTO</option><option>COBERTURA DE FOLGA</option><option>IMPLANTAÇÃO</option><option>CONVOCAÇÃO SINDICAL</option><option>APOIO A PORTARIA VIRTUAL</option><option>APOIO AO OP. PÚBLICO</option></select></label>
-          <label class="f full" id="o_apvPostoWrap" hidden><span>Posto de serviço para onde foi levado <em>*</em></span><input id="o_apvPosto" autocomplete="off"></label>
-          <label class="f full" id="o_apvObsWrap" hidden><span>Motivo do apoio <em>*</em></span><textarea id="o_apvObs" placeholder="Ex.: falha no sistema da portaria virtual, reforço solicitado pelo cliente"></textarea></label>
+            <select id="o_motivo"><option value="">Selecione</option><option>AFASTAMENTO</option><option>ATESTADO MÉDICO</option><option>CASAMENTO</option><option>FALTA NÃO JUSTIFICADA</option><option>FÉRIAS</option><option>INTEGRAÇÃO</option><option>SUSPENSÃO</option><option>FERIADO</option><option>LICENÇA PATERNIDADE</option><option>LICENÇA ÓBITO</option><option>ACOMPANHAMENTO DE FILHO MENOR DE 6 ANOS</option><option>FOLGA ESCALA 6X1</option><option>FOLGA ESCALA 5X1</option><option>FOLGA TRE</option><option>RECICLAGEM</option><option>ABANDONO DE EMPREGO</option><option>DEVOLUÇÃO</option><option>DESLIGAMENTO</option><option>COBERTURA DE FOLGA</option><option>IMPLANTAÇÃO</option><option>CONVOCAÇÃO SINDICAL</option><option>APOIO A PORTARIA VIRTUAL</option><option>APOIO AO OP. PÚBLICO</option><option>SOLICITADO PELO CLIENTE</option></select></label>
+          <label class="f full" id="o_apvPostoWrap" hidden><span><span id="o_apvPostoLbl">Posto de serviço para onde foi levado</span> <em>*</em></span><input id="o_apvPosto" autocomplete="off"></label>
+          <label class="f full" id="o_apvObsWrap" hidden><span><span id="o_apvObsLbl">Motivo do apoio</span> <em>*</em></span><textarea id="o_apvObs" placeholder="Ex.: falha no sistema da portaria virtual, reforço solicitado pelo cliente"></textarea></label>
         </div>
       </div>
 
@@ -661,8 +661,11 @@ td .acoes{display:flex;gap:6px;flex-wrap:wrap}
   }
   ["c_turno","c_escalaCob"].forEach(id=>$(id).addEventListener("change",sugerirHorario));
   /* motivos de ocorrência que pedem o posto para onde o colaborador foi levado e o motivo do apoio */
-  const APOIOS=["APOIO A PORTARIA VIRTUAL","APOIO AO OP. PÚBLICO"];
-  $("o_motivo").addEventListener("change",()=>{const a=APOIOS.includes($("o_motivo").value);$("o_apvPostoWrap").hidden=!a;$("o_apvObsWrap").hidden=!a});
+  const APOIOS=["APOIO A PORTARIA VIRTUAL","APOIO AO OP. PÚBLICO","SOLICITADO PELO CLIENTE"];
+  $("o_motivo").addEventListener("change",()=>{const a=APOIOS.includes($("o_motivo").value),cli=$("o_motivo").value==="SOLICITADO PELO CLIENTE";
+    $("o_apvPostoLbl").textContent=cli?"Nome do cliente":"Posto de serviço para onde foi levado";
+    $("o_apvObsLbl").textContent=cli?"Motivo da solicitação":"Motivo do apoio";
+    $("o_apvObs").placeholder=cli?"Ex.: evento no fim de semana, reforço na entrada, necessidade pontual":"Ex.: falha no sistema da portaria virtual, reforço solicitado pelo cliente";$("o_apvPostoWrap").hidden=!a;$("o_apvObsWrap").hidden=!a});
   function trocarSituacao(){
     const s=sitAtual();
     $("blk-cobertura").hidden=!COB(s);$("blk-nao_utilizado").hidden=s!=="nao_utilizado";$("blk-ocorrencia").hidden=s!=="ocorrencia";$("blk-disponivel_posto").hidden=s!=="disponivel_posto";
@@ -1236,7 +1239,7 @@ td .acoes{display:flex;gap:6px;flex-wrap:wrap}
   /* RUBRICAS DAS OCORRÊNCIAS (sigla do motivo) */
   const RUBRICAS={"AFASTAMENTO":"AFA","ATESTADO MEDICO":"ATE","CASAMENTO":"CAS","LICENCA CASAMENTO":"CAS","FALTA NAO JUSTIFICADA":"FNJ","FERIAS":"FER","INTEGRACAO":"INT","SUSPENSAO":"SUS","FERIADO":"FRD",
     "LICENCA PATERNIDADE":"PAT","LICENCA OBITO":"OBT","ACOMPANHAMENTO DE FILHO MENOR DE 6 ANOS":"ACF","FOLGA ESCALA 6X1":"F61","FOLGA ESCALA 5X1":"F51","FOLGA TRE":"TRE","RECICLAGEM":"REC",
-    "ABANDONO DE EMPREGO":"ABE","ABONDONO DE EMPREGO":"ABE","DEVOLUCAO":"DEV","DESLIGAMENTO":"DES","COBERTURA DE FOLGA":"CBF","IMPLANTACAO":"IMP","CONVOCACAO SINDICAL":"SIN","APOIO A PORTARIA VIRTUAL":"APV","APOIO AO OP. PUBLICO":"AOP"};
+    "ABANDONO DE EMPREGO":"ABE","ABONDONO DE EMPREGO":"ABE","DEVOLUCAO":"DEV","DESLIGAMENTO":"DES","COBERTURA DE FOLGA":"CBF","IMPLANTACAO":"IMP","CONVOCACAO SINDICAL":"SIN","APOIO A PORTARIA VIRTUAL":"APV","APOIO AO OP. PUBLICO":"AOP","SOLICITADO PELO CLIENTE":"SPC"};
   const rubrica=m=>RUBRICAS[norm(String(m||"").trim()).toUpperCase()]||"OC";
   const RUB_SET=new Set(Object.values(RUBRICAS).concat("OC"));
   /* agrupa linhas de tabela por filial, com uma faixa de título para cada filial */
