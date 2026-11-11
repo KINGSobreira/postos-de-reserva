@@ -419,6 +419,7 @@ td .acoes{display:flex;gap:6px;flex-wrap:wrap}
           </div></details></div>
       <label class="f" id="fStatusWrap"><span>Status</span><select id="fStatus"><option value="ativo">Na reserva</option><option value="saiu">Já saíram</option><option value="">Todos</option></select></label>
       <label class="f" id="fTipoWrap"><span>Tipo</span><select id="fTipo"><option value="">Todos</option><option value="Transitória">Transitória</option><option value="Permanente">Permanente</option><option value="POSTO">Reserva de posto (todas)</option><option value="POSTO_SIM">Reserva de posto · prevista em contrato</option><option value="POSTO_NAO">Reserva de posto · não prevista</option></select></label>
+      <label class="f" id="fPostoWrap" hidden><span>Posto da reserva</span><select id="fPosto"><option value="">Todos os postos</option></select></label>
       <label class="f" id="fSitWrap" hidden><span>Situação</span><select id="fSit"><option value="">Todas</option><option value="cobertura">Em cobertura</option><option value="programado">Programado</option><option value="disponivel">Disponível</option><option value="nao_utilizado">Não utilizado</option><option value="disponivel_posto">Disponível no posto</option><option value="folga">Folga</option><option value="ocorrencia">Ocorrência</option></select></label>
       <label class="f"><span>De</span><input id="fDe" type="date"></label>
       <label class="f"><span>Até</span><input id="fAte" type="date"></label>
@@ -998,8 +999,8 @@ td .acoes{display:flex;gap:6px;flex-wrap:wrap}
       const st=$("fStatus").value;
       if(sub==="res"&&st==="ativo"&&x.saidaEfetiva)return false;
       if(sub==="res"&&st==="saiu"&&!x.saidaEfetiva)return false;
-      if(sub==="res"&&!casaTipo(x,$("fTipo").value))return false;
-      if(sub==="mov"&&$("fTipo").value&&!casaTipo(reservaDoLanc(x),$("fTipo").value))return false;
+      if(sub==="res"&&!casaFiltroTipo(x))return false;
+      if(sub==="mov"&&$("fTipo").value&&!casaFiltroTipo(reservaDoLanc(x)))return false;
       const d=x[dateField]||"";if(de&&d<de)return false;if(ate&&d>ate)return false;
       if(q&&!norm([x.matricula,x.nome,x.local,x.matCoberto,x.nomeCoberto].join(" ")).includes(q))return false;
       return true;
@@ -1028,6 +1029,22 @@ td .acoes{display:flex;gap:6px;flex-wrap:wrap}
   ["r_mat","r_nome"].forEach(id=>$(id).addEventListener("blur",avisoDuplicado));
   const funcaoDe=x=>tituloCaso((x&&x.funcao)||(x&&x.matricula?reservaDoLanc(x).funcao:"")||"");
   const ehPostoR=x=>String(x.tipo||"").startsWith("RESERVA DE POSTO");
+  /* filtro de tipo + posto (o posto só vale para reserva de posto e é opcional) */
+  const ehFiltroPosto=()=>String($("fTipo").value).startsWith("POSTO");
+  function casaFiltroTipo(r){
+    if(!casaTipo(r||{},$("fTipo").value))return false;
+    const p=$("fPosto").value;
+    return !(ehFiltroPosto()&&p)||norm(postoDaReserva(r||{}))===norm(p);
+  }
+  function atualizarPostos(){
+    const atual=$("fPosto").value,f=$("fTipo").value;
+    const postos=[...new Set(reservas.filter(r=>ehPostoR(r)&&casaTipo(r,f)).map(r=>postoDaReserva(r)).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"pt"));
+    $("fPosto").innerHTML='<option value="">Todos os postos</option>'+postos.map(p=>`<option value="${esc(p)}">${esc(p)}</option>`).join("");
+    if(postos.includes(atual))$("fPosto").value=atual;
+    $("fPostoWrap").hidden=!ehFiltroPosto();
+  }
+  $("fTipo").addEventListener("change",()=>{atualizarPostos();render()});
+  $("fPosto").addEventListener("change",render);
   function casaTipo(x,f){
     if(!f)return true;
     if(f==="POSTO")return ehPostoR(x);
@@ -1210,7 +1227,7 @@ td .acoes{display:flex;gap:6px;flex-wrap:wrap}
     btn.disabled=true;const txt=btn.textContent;btn.textContent="Gerando planilha…";
     try{
       const tipoF=$("fTipo").value;
-      const rows=linhasControle().filter(x=>filtraFilial(x.C)&&(!tipoF||casaTipo(reservaDoLanc({matricula:x.A,data:x.K?isoDe(new Date((x.K-25569)*864e5+12*36e5)):(x.H?isoDe(new Date((x.H-25569)*864e5+12*36e5)):"")}),tipoF)));
+      const rows=linhasControle().filter(x=>filtraFilial(x.C)&&casaFiltroTipo(reservaDoLanc({matricula:x.A,data:x.K?isoDe(new Date((x.K-25569)*864e5+12*36e5)):(x.H?isoDe(new Date((x.H-25569)*864e5+12*36e5)):"")})));
       if(rows.length>2000)$("status").textContent=`O modelo comporta 2.000 linhas; ${rows.length-2000} registros mais recentes ficaram de fora.`;
       const mapa={};rows.slice(0,2000).forEach((x,i)=>mapa[14+i]=x);
       btn.textContent="Carregando modelo…";
@@ -1265,7 +1282,7 @@ td .acoes{display:flex;gap:6px;flex-wrap:wrap}
   const fmtDataHora=s=>{const d=dtHora(s);return d?d.toLocaleDateString("pt-BR")+" "+d.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"}):""};
   const filtrosTxt=()=>{const fs=filiaisSel(),de=$("fDe").value,ate=$("fAte").value,q=$("q").value.trim();
     return ["Período: "+(de||ate?(de?fmt(de):"início")+" a "+(ate?fmt(ate):"hoje"):"todo o histórico"),fs.length?(fs.length>1?"Filiais: ":"Filial: ")+fs.join(", "):"Todas as filiais"]
-      .concat($("fTipo").value?["Tipo: "+$("fTipo").options[$("fTipo").selectedIndex].text]:[],q?["Busca: "+q]:[]).join("   |   ")};
+      .concat($("fTipo").value?["Tipo: "+$("fTipo").options[$("fTipo").selectedIndex].text+(ehFiltroPosto()&&$("fPosto").value?" · Posto: "+$("fPosto").value:"")]:[],q?["Busca: "+q]:[]).join("   |   ")};
   const COLS_COB=["Tipo","Posto","Data","Feriado","MatriculaSubstituto","NomeSubstituto","FuncaoSubstituto","Filial","Matricula","Nome","Horario","Turno","Escala","DataInput"];
   $("btnCobXlsx").addEventListener("click",()=>{
     if(!window.XLSX){$("status").textContent="O gerador de planilha não carregou. Recarregue a página e tente de novo.";return}
@@ -1361,7 +1378,7 @@ td .acoes{display:flex;gap:6px;flex-wrap:wrap}
       const q=norm($("q").value);
       const dias=[...Array(nd)].map((_,i)=>`${y}-${String(m).padStart(2,"0")}-${String(i+1).padStart(2,"0")}`);
       /* colaboradores que estiveram na reserva em algum dia do mês */
-      const resMes=reservas.filter(r=>r.entrada&&r.entrada<=fim&&(!r.saidaEfetiva||r.saidaEfetiva>=ini)&&filtraFilial(r.filial)&&casaTipo(r,$("fTipo").value)&&(!q||norm(r.matricula+" "+r.nome).includes(q)));
+      const resMes=reservas.filter(r=>r.entrada&&r.entrada<=fim&&(!r.saidaEfetiva||r.saidaEfetiva>=ini)&&filtraFilial(r.filial)&&casaFiltroTipo(r)&&(!q||norm(r.matricula+" "+r.nome).includes(q)));
       const porMat=new Map();resMes.sort((a,b)=>String(a.nome).localeCompare(String(b.nome),"pt")).forEach(r=>{const k=r.matricula;if(!porMat.has(k))porMat.set(k,[]);porMat.get(k).push(r)});
       const regs=movs.concat(gerarAutomaticos(fim)).filter(x=>x.data>=ini&&x.data<=fim);
       const TRAB=x=>COB(x.situacao)||x.situacao==="disponivel_posto";
@@ -1390,7 +1407,7 @@ td .acoes{display:flex;gap:6px;flex-wrap:wrap}
       const resumoAgr=agrupaFilial(resumoF,x=>x.f,12,g=>g.map(x=>x.row),g=>qtd(g.length,"colaborador","colaboradores"));
       const nomeMes=MESES[m-1].charAt(0)+MESES[m-1].slice(1).toLowerCase();totalColab=Math.max(totalColab,linhasF.length);
       const filSel=filiaisSel();
-      filtroTxt=[`${nomeMes} de ${y}`].concat($("fTipo").value?["Tipo: "+$("fTipo").options[$("fTipo").selectedIndex].text]:[],[filSel.length?(filSel.length>1?"Filiais: ":"Filial: ")+filSel.join(", "):"Todas as filiais"]).concat(q?["Busca: "+$("q").value.trim()]:[]).join("   |   ");
+      filtroTxt=[`${nomeMes} de ${y}`].concat($("fTipo").value?["Tipo: "+$("fTipo").options[$("fTipo").selectedIndex].text+(ehFiltroPosto()&&$("fPosto").value?" · Posto: "+$("fPosto").value:"")]:[],[filSel.length?(filSel.length>1?"Filiais: ":"Filial: ")+filSel.join(", "):"Todas as filiais"]).concat(q?["Busca: "+$("q").value.trim()]:[]).join("   |   ");
       
       const moldura=()=>{
         const pg=doc.internal.getCurrentPageInfo().pageNumber;if(feitas.has(pg))return;feitas.add(pg);
@@ -1492,7 +1509,7 @@ td .acoes{display:flex;gap:6px;flex-wrap:wrap}
       const hoje=today(),agora=new Date();
       const filSel=filiaisSel(),de=$("fDe").value,ate=$("fAte").value,q=$("q").value.trim();
       const stTxt={ativo:"Na reserva",saiu:"Já saíram","":"Todos"}[$("fStatus").value];
-      const tipoTxt=$("fTipo").options[$("fTipo").selectedIndex].text;
+      const tipoTxt=$("fTipo").options[$("fTipo").selectedIndex].text+(ehFiltroPosto()&&$("fPosto").value?" · Posto: "+$("fPosto").value:"");
       const filtroTxt=(modoRes?["Status: "+stTxt]:[]).concat($("fTipo").value?["Tipo: "+tipoTxt]:[]).concat([(filSel.length?(filSel.length>1?"Filiais: ":"Filial: ")+filSel.map(f=>filSel.length>2?f:f+" · "+(FILIAIS[f]||"")).join(", "):"Filial: Todas"),"Período: "+(de||ate?(de?fmt(de):"início")+" a "+(ate?fmt(ate):"hoje"):"Todo o histórico")].concat(q?["Busca: "+q]:[])).join("   |   ");
       const logo=await logoDataUrl();
       const {jsPDF}=window.jspdf;const doc=new jsPDF({orientation:"landscape",unit:"mm",format:"a4"});
@@ -1674,7 +1691,7 @@ td .acoes{display:flex;gap:6px;flex-wrap:wrap}
       if(!j.ok)throw new Error(j.error);
       reservas=(j.reservas||[]).map(x=>Object.assign({_id:x.id},x));
       movs=(j.movs||[]).map(x=>Object.assign({_id:x.id},x));
-      unificarMatriculas();
+      unificarMatriculas();atualizarPostos();
       const mats=[...new Map(ativas().map(r=>[r.matricula,r])).values()];
       $("listaReserva").innerHTML=mats.map(r=>`<option value="${esc(r.matricula)}">${esc(r.nome)}</option>`).join("");
       render();if(!$("view-dash").hidden)renderDash();
